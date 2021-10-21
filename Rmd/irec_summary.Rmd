@@ -1,0 +1,422 @@
+---
+title: "Irec and creel data exploration"
+author: "Catarina Wor"
+date:  "`r format(Sys.time(), '%B %Y')`"
+output: bookdown::html_document2
+---
+
+
+
+
+```{r load, include=FALSE}
+
+library(ggplot2)
+library(dplyr)
+library(grid)
+#rmarkdown::render("irec_summary.Rmd")
+
+#read in data
+
+creel<-read.csv("../data/creel2020.csv")
+irec<-read.csv("../data/iRecchinook_2012_2021.csv")
+
+
+```
+
+```{r wrangle, include=FALSE}
+
+#input 0s for missing observations on irec
+#create df for all possible observations - using variables of interest only
+#if other variables are considered, need to include them here
+allobs <- expand.grid(list(AREA=unique(irec$AREA),
+  YEAR=unique(irec$YEAR),
+  MONTH=unique(irec$MONTH),
+  DISPOSITION=unique(irec$DISPOSITION)))
+
+irecall<-left_join(allobs,irec)
+irecall$ESTIMATE[is.na(irecall$ESTIMATE)]<-0
+
+
+creelc<- creel %>%
+  rename(AREA=PFMA, SD=STANDARD_ERROR,DISPOSITION=TYPE, CREEL=)%>%
+  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD))%>%
+  mutate(SURVEY="creel")
+
+
+irecc<- irecall %>%
+  #rename(IREC=ESTIMATE)%>%
+  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,VARIANCE))%>%
+  group_by( AREA,YEAR,MONTH,DISPOSITION) %>% summarise(ESTIMATE = sum(ESTIMATE), VARIANCE = sum(VARIANCE))%>%
+  mutate(SD=sqrt(VARIANCE))%>%
+  select(c(!VARIANCE))%>%
+  mutate(SURVEY="iRec")
+
+dat<-rbind(creelc,irecc)
+
+
+
+creelcc<-creelc%>%
+rename(CREEL=ESTIMATE,SDCREEL=SD)%>%
+  select(c(!SURVEY))
+
+
+ireccc<-irecc%>%
+rename(IREC=ESTIMATE,SDIREC=SD)%>%
+  select(c(!SURVEY))
+
+
+datxy<-left_join(ireccc,creelcc)
+
+```
+
+A few notes on the current data:
+
+ - Initial data explorations, we have creel data for 2020, only. 
+ - The creel data does not include the quality control, e.g. creel data for september may only include estimates up to labour day.
+ - There are no 0's inputed in the creel data set - a revised version will be provided soon.
+ - iRec data was inputed: any missing observations were inputed with 0's. If no survey respondant said they caught a chinook, then our estimate is 0. 
+
+
+
+# Relationships between creel and irec
+
+## Relationship by month
+
+
+```{r relbymonth, echo=FALSE, fig.height = 8, fig.width = 14, fig.cap = "Relationship between iRec and Creel estimates by  month and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
+
+p <- ggplot(datxy)
+p <- p + geom_point(aes(x=CREEL, y=IREC,color=DISPOSITION, shape=DISPOSITION), size=2)
+p <- p + facet_wrap(~MONTH, scales="free")
+p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + geom_abline(slope=1,intercept=0)
+p
+
+
+```
+
+# Relationship by area
+
+```{r byarea, echo=FALSE, fig.height = 13, fig.width = 13, fig.cap = "Relationship between iRec and Creel estimaes by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
+
+p <- ggplot(datxy)
+p <- p + geom_point(aes(x=CREEL, y=IREC,color=AREA, shape=DISPOSITION),size=2)
+#p <- p + facet_wrap(~AREA, scales="free")
+p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
+p <- p + scale_color_viridis_d()
+#p <- p + coord_cartesian(ylim=c(0,max(datxy$CREEL,datxy$IREC, na.rm=T)),xlim=c(0,max(datxy$CREEL,datxy$IREC,na.rm=T)))
+p <- p + geom_abline(slope=1,intercept=0)
+p <- p + theme(legend.position="bottom")
+p
+```
+
+# Relationship by year
+
+```{r byyear, echo=FALSE, fig.height = 13, fig.width = 13, fig.cap = "Relationship between iRec and Creel estimaes by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
+
+p <- ggplot(datxy)
+p <- p + geom_point(aes(x=CREEL, y=IREC,color=DISPOSITION, shape=DISPOSITION),size=2)
+p <- p + facet_wrap(~YEAR, scales="free")
+p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+#p <- p + coord_cartesian(ylim=c(0,max(datxy$CREEL,datxy$IREC, na.rm=T)),xlim=c(0,max(datxy$CREEL,datxy$IREC,na.rm=T)))
+p <- p + geom_abline(slope=1,intercept=0)
+p <- p + theme(legend.position="bottom")
+p
+```
+
+## iRec:creel ratio by month
+
+
+```{r ratbymonth, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = " Ratio between iRec and Creel estimates by  month and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
+
+datxy$ratio <- datxy$IREC/datxy$CREEL
+datxy <- datxy[is.finite(datxy$ratio),] 
+
+
+ 
+
+p <- ggplot(datxy, aes(x=as.factor(MONTH),y=ratio, color=DISPOSITION))
+p <- p + geom_boxplot(width=1, position = position_dodge(width = 1))
+p <- p +geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + theme_bw(16)+labs( x="month", y="iRec:creel")
+p
+
+
+
+p2 <- ggplot(datxy, aes(x=as.factor(MONTH),y=ratio, color=DISPOSITION))
+p2 <- p2 + geom_boxplot(width=1, position = position_dodge(width = 1))
+p2 <- p2 +geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
+p2 <- p2 + scale_color_viridis_d(end = 0.8,option = "A")
+p2 <- p2 + theme_bw(16)+labs( x="month", y="iRec:creel")
+p2 <- p2 + coord_cartesian( ylim = c(0,10))
+
+
+
+grid.newpage()
+grid.draw(rbind(ggplotGrob(p), ggplotGrob(p2), size = "last"))
+
+```
+
+
+## iRec:creel ratio by area
+
+```{r ratbyarea, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Ratio between iRec and Creel estimates by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
+
+
+p <- ggplot(datxy, aes(x=as.factor(AREA),y=ratio, color=DISPOSITION))
+p <- p + geom_boxplot(width=1, position = position_dodge(width = 1))
+p <- p +geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + theme_bw(16)+labs( x="month", y="iRec:creel")
+p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+
+
+p2 <- ggplot(datxy, aes(x=as.factor(AREA),y=ratio, color=DISPOSITION))
+p2 <- p2 + geom_boxplot(width=1, position = position_dodge(width = 1))
+p2 <- p2 +geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
+p2 <- p2 + scale_color_viridis_d(end = 0.8,option = "A")
+p2 <- p2 + theme_bw(16)+labs( x="month", y="iRec:creel")
+p2 <- p2 + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+p2 <- p2 + coord_cartesian( ylim = c(0,50))
+
+
+
+grid.newpage()
+grid.draw(rbind(ggplotGrob(p), ggplotGrob(p2), size = "last"))
+
+```
+
+
+The year figure seems to suggest that 2012 and 2013 were different from all the other years, Perhaps people were still getting used to irec?
+
+```{r ratbyyear, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Ratio between iRec and Creel estimates by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
+
+
+p <- ggplot(datxy, aes(x=as.factor(YEAR),y=ratio, color=DISPOSITION))
+p <- p + geom_boxplot(width=1, position = position_dodge(width = 1))
+p <- p + geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + theme_bw(16)+labs( x="month", y="iRec:creel")
+p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+
+p2 <- ggplot(datxy, aes(x=as.factor(YEAR),y=ratio, color=DISPOSITION))
+p2 <- p2 + geom_boxplot(width=1, position = position_dodge(width = 1))
+p2 <- p2 + geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
+p2 <- p2 + scale_color_viridis_d(end = 0.8,option = "A")
+p2 <- p2 + theme_bw(16)+labs( x="month", y="iRec:creel")
+p2 <- p2 + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+p2 <- p2 + coord_cartesian( ylim = c(0,15))
+
+
+grid.newpage()
+grid.draw(rbind(ggplotGrob(p), ggplotGrob(p2), size = "last"))
+
+
+```
+
+
+
+# Data distribution
+
+Creel estimates are incomplete. How would there missing values affect the model fit? 
+
+## Counts by month
+
+```{r disbymonth, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Observation counts for creel and iRec by month. Note: iRec values were inputed, as the absence of a response implies zero catch. "}
+
+
+
+p <- ggplot(dat)
+p <- p + geom_bar(aes(x=as.factor(MONTH), color=SURVEY, fill=SURVEY),alpha=.5, position=position_dodge2(width = 0.9, preserve = "single"))
+p <- p + scale_fill_viridis_d(end = 0.8,option = "A")
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + theme_bw(16)+labs( x="month", y="count")
+p
+```
+
+## Counts by area
+
+```{r disbyarea, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Observation counts for creel and iRec by area. Note: iRec values were inputed, as the absence of a response implies zero catch. "}
+
+p <- ggplot(dat)
+p <- p + geom_bar(aes(x=as.factor(AREA), color=SURVEY, fill=SURVEY),alpha=.5, position=position_dodge2(width = 0.9, preserve = "single"))
+p <- p + scale_fill_viridis_d(end = 0.8,option = "A")
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + theme_bw(16)
+p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+p
+
+```
+
+## Counts by year
+
+```{r disbyarea, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Observation counts for creel and iRec by area. Note: iRec values were inputed, as the absence of a response implies zero catch. "}
+
+p <- ggplot(dat)
+p <- p + geom_bar(aes(x=as.factor(YEAR), color=SURVEY, fill=SURVEY),alpha=.5, position=position_dodge2(width = 0.9, preserve = "single"))
+p <- p + scale_fill_viridis_d(end = 0.8,option = "A")
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + theme_bw(16)
+p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+p
+
+```
+
+
+## sum of estimates by month
+
+```{r estbymonth, echo=FALSE, fig.height = 7, fig.width = 12, fig.cap = "Sum of estimates for creel and iRec by month. Note: iRec values were inputed, as the absence of a response implies zero catch. "}
+
+datmon <- dat %>%
+group_by( MONTH,DISPOSITION,SURVEY) %>% summarise(ESTIMATE = sum(ESTIMATE))
+
+
+p <- ggplot(datmon)
+p <- p + geom_col(aes(x=as.factor(MONTH),y=ESTIMATE, color=SURVEY, fill=SURVEY),alpha=.5, position=position_dodge2(width = 0.9, preserve = "single"))
+p <- p + facet_wrap(~DISPOSITION)
+p <- p + scale_fill_viridis_d(end = 0.8,option = "A")
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + theme_bw(16)+labs( x="month", y="sum(obs)")
+p
+```
+
+## sum of estimates by area
+
+```{r estbyarea, echo=FALSE, fig.height =9, fig.width = 20, fig.cap = "Sum of estimates for creel and iRec by area. Note: iRec values were inputed, as the absence of a response implies zero catch."}
+
+datmon <- dat %>%
+group_by( AREA,DISPOSITION,SURVEY) %>% summarise(ESTIMATE = sum(ESTIMATE))
+
+
+p <- ggplot(datmon)
+p <- p + geom_col(aes(x=as.factor(AREA),y=ESTIMATE, color=SURVEY, fill=SURVEY),alpha=.5, position=position_dodge2(width = 0.9, preserve = "single"))
+p <- p + facet_wrap(~DISPOSITION)
+p <- p + scale_fill_viridis_d(end = 0.8,option = "A")
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + theme_bw(16)+labs( x="area", y="sum(obs)")
+p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+p
+
+```
+
+
+## sum of estimates by year
+
+```{r estbyarea, echo=FALSE, fig.height =9, fig.width = 20, fig.cap = "Sum of estimates for creel and iRec by area. Note: iRec values were inputed, as the absence of a response implies zero catch."}
+
+datyr<- dat %>%
+group_by( YEAR,DISPOSITION,SURVEY) %>% summarise(ESTIMATE = sum(ESTIMATE))
+
+
+p <- ggplot(datyr)
+p <- p + geom_col(aes(x=as.factor(YEAR),y=ESTIMATE, color=SURVEY, fill=SURVEY),alpha=.5, position=position_dodge2(width = 0.9, preserve = "single"))
+p <- p + facet_wrap(~DISPOSITION)
+p <- p + scale_fill_viridis_d(end = 0.8,option = "A")
+p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + theme_bw(16)+labs( x="area", y="sum(obs)")
+p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+p
+
+```
+
+
+# Background
+
+We propose to develop a calibration model to combine both survey methods to a single recreational catch estimate, taking into account month and area. 
+
+I am thinking this would be a state-space mode as we have error associated with both surveys, something like:
+
+
+The simple model (one currently being used): 
+
+\begin{align}
+&iREC_i =  \beta_1\cdot z_i + \epsilon_i\\
+&z_i = Creel_i   + \nu_{i} 
+\end{align}
+
+\begin{align}
+&\epsilon_i \sim N(0,\sigma_{\epsilon})\\
+&\nu_{i} \sim N(0,\sigma_{\nu})
+\end{align}
+
+ where:
+
+$iREC_i$ =  iREC observation 
+
+$Creel_i$ =  creel observation 
+
+$\beta_1$ =  slope associated with $Creel_i$ 
+
+$z_i$ = smoothed ('true') $Creel_i$ 
+
+$\epsilon_i$ and $\nu_{i}$ are random normal variables 
+
+
+Adding area and month:
+
+\begin{align}
+&iREC_i =  \beta_1\cdot z_i + \beta_2\cdot area_i + \beta_3\cdot month_i + \epsilon_i\\
+&z_i = Creel_i + \nu_{i} 
+\end{align}
+
+\begin{align}
+&\epsilon_i \sim N(0,\sigma_{\epsilon})\\
+&\nu_{i} \sim N(0,\sigma_{\nu})
+\end{align}
+
+ where: 
+$\beta_2$ = slope associated with area 
+
+
+
+$area_i$ = area for each observation (categorical) 
+
+$\beta_3$ = slope associated with month 
+
+$month_i$ = month for each observation (cyclic variable?) 
+
+## Questions about model formulation:
+
+
+**Q - Which parametes should be treated as "random"? Should I set $z_i$ as a random parameter?**
+
+**Q- should I consider using a hyper prior on area? And treat it as a random effect?**
+
+**Q -  I am not sure of how to account for missing months (if I have no creel data in winter months).**
+
+**Q - Month as a cyclic variable?  Using cyclic splines? maybe not a good idea give the plot of ratios by months**
+
+**Q - All estimates os iRec and creel have sds associated with them. We could weight the observations with cvs, as we do in survey indexes in stock assessment models. Suggestions?**
+
+
+**Q - Interaction terms with area and month?**
+
+It is true that interactions by area and month may exist. But I am not sure I have enough data to estimate it? maybe consider a full model with the interactions?
+
+**Q - Consider year as a covariate?**
+
+iRec response rates and response quality may have improved over the years as users became more familiar with the interface. 
+I don't think we would have enough observations to consider year, area and month. But maybe if we drop month we could include year?
+Or we could aggregate the years into blocks, e.g. pre and pos 2017.
+
+**Q -  Which program to use? TMB, Stan, brms, rstanarm, or glmmTMB** 
+
+I think we are inclined to use a Bayesian framework. Depending on who will be using this model, they might use a s ingle point or credible intervals, it would be good to have the option. 
+
+
+glmmTMB - I am not sure we can get Bayesian estimates with it? maybe I'm wrong?
+TMB(stan) - I already know. 
+Stan,brms, rstanarm - I am not super knowledgeable of it but keen to learn. 
+
+Basically I am flexible, but I might need more help depending on the program we choose.  
+
+
+**Q - Spatial covariance?**
+
+Can we account for spatial covariance if areas are discrete units (i.e. PFMA) and not continuous? How would we inform the model that Area 18 and 29 are neighbors?
+See [the PFMA maps](https://www.pac.dfo-mpo.gc.ca/fm-gp/maps-cartes/areas-secteurs/index-eng.html)
+
+**Q- spline on month estimates: this might not be relevant based on plots of the ratio between iRec and creel estimates. But interested in your thoughts.** 
