@@ -69,12 +69,12 @@ datxy<-left_join(ireccc,creelcc)
 
 ```
 
-A few notes on the current data:
+**A few notes on the current data:**
 
- - Initial data explorations, we have creel data for 2020, only. 
- - The creel data does not include the quality control, e.g. creel data for september may only include estimates up to labour day.
- - There are no 0's inputed in the creel data set - a revised version will be provided soon.
+ - The creel data does not include the quality control, e.g. creel data for september may only include estimates up to labour day. -Rob and I will get together and discuss a few quality control scenarios, but I wanted to disribute this before our meeting.
  - iRec data was inputed: any missing observations were inputed with 0's. If no survey respondant said they caught a chinook, then our estimate is 0. 
+- If there is any particular plot taht you would like to see, let me know. 
+
 
 
 
@@ -142,7 +142,7 @@ p <- p + geom_boxplot(width=1, position = position_dodge(width = 1))
 p <- p +geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
 p <- p + scale_color_viridis_d(end = 0.8,option = "A")
 p <- p + theme_bw(16)+labs( x="month", y="iRec:creel")
-p
+
 
 
 
@@ -163,7 +163,7 @@ grid.draw(rbind(ggplotGrob(p), ggplotGrob(p2), size = "last"))
 
 ## iRec:creel ratio by area
 
-```{r ratbyarea, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Ratio between iRec and Creel estimates by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
+```{r ratbyarea, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Ratio between iRec and Creel estimates by area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
 
 p <- ggplot(datxy, aes(x=as.factor(AREA),y=ratio, color=DISPOSITION))
@@ -199,14 +199,14 @@ p <- ggplot(datxy, aes(x=as.factor(YEAR),y=ratio, color=DISPOSITION))
 p <- p + geom_boxplot(width=1, position = position_dodge(width = 1))
 p <- p + geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
 p <- p + scale_color_viridis_d(end = 0.8,option = "A")
-p <- p + theme_bw(16)+labs( x="month", y="iRec:creel")
+p <- p + theme_bw(16)+labs( x="year", y="iRec:creel")
 p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
 
 p2 <- ggplot(datxy, aes(x=as.factor(YEAR),y=ratio, color=DISPOSITION))
 p2 <- p2 + geom_boxplot(width=1, position = position_dodge(width = 1))
 p2 <- p2 + geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
 p2 <- p2 + scale_color_viridis_d(end = 0.8,option = "A")
-p2 <- p2 + theme_bw(16)+labs( x="month", y="iRec:creel")
+p2 <- p2 + theme_bw(16)+labs( x="year", y="iRec:creel")
 p2 <- p2 + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
 p2 <- p2 + coord_cartesian( ylim = c(0,15))
 
@@ -253,14 +253,14 @@ p
 
 ## Counts by year
 
-```{r disbyarea, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Observation counts for creel and iRec by area. Note: iRec values were inputed, as the absence of a response implies zero catch. "}
+```{r disbyyear, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Observation counts for creel and iRec by year. Note: iRec values were inputed, as the absence of a response implies zero catch. "}
 
 p <- ggplot(dat)
 p <- p + geom_bar(aes(x=as.factor(YEAR), color=SURVEY, fill=SURVEY),alpha=.5, position=position_dodge2(width = 0.9, preserve = "single"))
 p <- p + scale_fill_viridis_d(end = 0.8,option = "A")
 p <- p + scale_color_viridis_d(end = 0.8,option = "A")
 p <- p + theme_bw(16)
-p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="year", y="count")
 p
 
 ```
@@ -305,7 +305,7 @@ p
 
 ## sum of estimates by year
 
-```{r estbyarea, echo=FALSE, fig.height =9, fig.width = 20, fig.cap = "Sum of estimates for creel and iRec by area. Note: iRec values were inputed, as the absence of a response implies zero catch."}
+```{r estbyyear, echo=FALSE, fig.height =9, fig.width = 20, fig.cap = "Sum of estimates for creel and iRec by year. Note: iRec values were inputed, as the absence of a response implies zero catch."}
 
 datyr<- dat %>%
 group_by( YEAR,DISPOSITION,SURVEY) %>% summarise(ESTIMATE = sum(ESTIMATE))
@@ -316,7 +316,7 @@ p <- p + geom_col(aes(x=as.factor(YEAR),y=ESTIMATE, color=SURVEY, fill=SURVEY),a
 p <- p + facet_wrap(~DISPOSITION)
 p <- p + scale_fill_viridis_d(end = 0.8,option = "A")
 p <- p + scale_color_viridis_d(end = 0.8,option = "A")
-p <- p + theme_bw(16)+labs( x="area", y="sum(obs)")
+p <- p + theme_bw(16)+labs( x="year", y="sum(obs)")
 p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
 p
 
