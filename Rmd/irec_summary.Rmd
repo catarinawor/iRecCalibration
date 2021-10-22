@@ -71,9 +71,9 @@ datxy<-left_join(ireccc,creelcc)
 
 **A few notes on the current data:**
 
- - The creel data does not include the quality control, e.g. creel data for september may only include estimates up to labour day. -Rob and I will get together and discuss a few quality control scenarios, but I wanted to disribute this before our meeting.
+ - The creel data does not include the quality control, e.g. creel data for september may only include estimates up to labour day. - Rob and I will get together and discuss a few quality control scenarios, but I wanted to disribute this before our meeting.
  - iRec data was inputed: any missing observations were inputed with 0's. If no survey respondant said they caught a chinook, then our estimate is 0. 
-- If there is any particular plot taht you would like to see, let me know. 
+- If there is any particular plot that you would like to see, let me know. 
 
 
 
@@ -180,7 +180,7 @@ p2 <- p2 +geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
 p2 <- p2 + scale_color_viridis_d(end = 0.8,option = "A")
 p2 <- p2 + theme_bw(16)+labs( x="month", y="iRec:creel")
 p2 <- p2 + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
-p2 <- p2 + coord_cartesian( ylim = c(0,50))
+p2 <- p2 + coord_cartesian( ylim = c(0,15))
 
 
 
@@ -190,7 +190,7 @@ grid.draw(rbind(ggplotGrob(p), ggplotGrob(p2), size = "last"))
 ```
 
 
-The year figure seems to suggest that 2012 and 2013 were different from all the other years, Perhaps people were still getting used to irec?
+**The year figure seems to suggest that 2012 and 2013 were different from all the other years, Perhaps people were still getting used to irec?**
 
 ```{r ratbyyear, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Ratio between iRec and Creel estimates by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
@@ -223,7 +223,7 @@ grid.draw(rbind(ggplotGrob(p), ggplotGrob(p2), size = "last"))
 
 Creel estimates are incomplete. How would there missing values affect the model fit? 
 
-## Counts by month
+## Observation counts by month
 
 ```{r disbymonth, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Observation counts for creel and iRec by month. Note: iRec values were inputed, as the absence of a response implies zero catch. "}
 
@@ -237,7 +237,7 @@ p <- p + theme_bw(16)+labs( x="month", y="count")
 p
 ```
 
-## Counts by area
+## Observation counts by area
 
 ```{r disbyarea, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Observation counts for creel and iRec by area. Note: iRec values were inputed, as the absence of a response implies zero catch. "}
 
@@ -251,7 +251,7 @@ p
 
 ```
 
-## Counts by year
+## Observation counts by year
 
 ```{r disbyyear, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Observation counts for creel and iRec by year. Note: iRec values were inputed, as the absence of a response implies zero catch. "}
 
