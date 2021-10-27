@@ -6,61 +6,7 @@ output: bookdown::html_document2
 ---
 
 
-
-# Background
-
-We propose to develop a calibration model to combine both survey methods to a single recreational catch estimate, taking into account month and area. The objective is to obtain a "calibrated" irec estimate. 
-
-
-The simple model (one currently being used): 
-
-\begin{align}
-&iREC_i =  \beta_1\cdot z_i + \epsilon_i\\
-&z_i = Creel_i   + \nu_{i} 
-\end{align}
-
-\begin{align}
-&\epsilon_i \sim N(0,\sigma_{\epsilon})\\
-&\nu_{i} \sim N(0,\sigma_{\nu})
-\end{align}
-
- where:
-
-$iREC_i$ =  iREC observation 
-
-$Creel_i$ =  creel observation 
-
-$\beta_1$ =  slope associated with $Creel_i$ 
-
-$z_i$ = smoothed ('true') $Creel_i$ 
-
-$\epsilon_i$ and $\nu_{i}$ are random normal variables 
-
-
-Adding area and month:
-
-\begin{align}
-&y_i =  \beta_1\cdot z_i + \beta_2\cdot area_i + \beta_3\cdot month_i + \epsilon_i\\
-&y_i = iREC_i + \omega_{i}
-&z_i = Creel_i + \nu_{i} 
-\end{align}
-
-\begin{align}
-&\epsilon_i \sim N(0,\sigma_{\epsilon,i})\\
-&\omega_i \sim N(0,\sigma_{\omega,i})\\
-&\nu_{i} \sim N(0,\sigma_{\nu,i})
-\end{align}
-
- where: 
-$\beta_2$ = slope associated with area 
-
-$area_i$ = area for each observation (categorical) 
-
-$\beta_3$ = slope associated with month 
-
-$month_i$ = month for each observation (cyclic variable?) 
-
-
+This version contains qualty control for creel data. 
 
 ```{r load, include=FALSE}
 
@@ -77,7 +23,7 @@ irec<-read.csv("../data/iRecchinook_2012_2021.csv")
 
 ```
 
-```{r wrangle, include=FALSE}
+```{r wrangleirec, include=FALSE}
 
 #input 0s for missing observations on irec
 #create df for all possible observations - using variables of interest only
@@ -91,13 +37,6 @@ irecall<-left_join(allobs,irec)
 irecall$ESTIMATE[is.na(irecall$ESTIMATE)]<-0
 
 
-creelc<- creel %>%
-  filter(ESTIMATE_SOURCE=="Creel")%>%
-  rename(AREA=PFMA, SD=STANDARD_ERROR,DISPOSITION=TYPE, CREEL=)%>%
-  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD))%>%
-  mutate(SURVEY="creel")
-
-
 irecc<- irecall %>%
   #rename(IREC=ESTIMATE)%>%
   select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,VARIANCE))%>%
@@ -106,13 +45,47 @@ irecc<- irecall %>%
   select(c(!VARIANCE))%>%
   mutate(SURVEY="iRec")
 
-dat<-rbind(creelc,irecc)
+```
+
+```{r wranglecreel, include=FALSE}
+
+
+creelc<- creel %>%
+  filter(ESTIMATE_SOURCE=="Creel")%>%
+  rename(AREA=PFMA, SD=STANDARD_ERROR,DISPOSITION=TYPE)%>%
+  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD))%>%
+  mutate(SURVEY="creel")
+
+creelc15<- creel %>%
+  filter(ESTIMATE_SOURCE=="Creel",  Include..15.=="Y")%>%
+  rename(AREA=PFMA, SD=STANDARD_ERROR,DISPOSITION=TYPE)%>%
+  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD))%>%
+  mutate(SURVEY="creel15")
+
+creelc20<- creel %>%
+  filter(ESTIMATE_SOURCE=="Creel",  Include..20.=="Y")%>%
+  rename(AREA=PFMA, SD=STANDARD_ERROR,DISPOSITION=TYPE)%>%
+  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD))%>%
+  mutate(SURVEY="creel20")
+
+dat<-rbind(creelc,creelc15,creelc20,irecc)
 
 
 
-creelcc<-creelc%>%
-rename(CREEL=ESTIMATE,SDCREEL=SD)%>%
-  select(c(!SURVEY))
+
+creelf<- creel %>%
+  filter(ESTIMATE_SOURCE=="Creel")%>%
+  mutate(SURVEY=case_when(
+  Include..20.=="Y"~ "creel20",
+  Include..15.=="Y"~ "creel15",
+  TRUE ~ "creel"))%>%
+  rename(AREA=PFMA, SD=STANDARD_ERROR,DISPOSITION=TYPE)%>%
+  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD, SURVEY))
+
+
+
+creelcc<-creelf%>%
+rename(CREEL=ESTIMATE,SDCREEL=SD)
 
 
 ireccc<-irecc%>%
@@ -121,6 +94,8 @@ rename(IREC=ESTIMATE,SDIREC=SD)%>%
 
 
 datxy<-left_join(ireccc,creelcc)
+
+unique(datxy$SURVEY)
 
 ```
 
@@ -138,14 +113,13 @@ datxy<-left_join(ireccc,creelcc)
 ## Relationship by month
 
 
-
 ```{r relbymonth, echo=FALSE, fig.height = 8, fig.width = 14, fig.cap = "Relationship between iRec and Creel estimates by  month and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
 p <- ggplot(datxy)
-p <- p + geom_point(aes(x=CREEL, y=IREC,color=DISPOSITION, shape=DISPOSITION), size=2)
+p <- p + geom_point(aes(x=CREEL, y=IREC,color=SURVEY, shape=SURVEY), size=2,alpha=.5)
 p <- p + facet_wrap(~MONTH, scales="free")
 p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
-p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + scale_color_viridis_d(end = 0.8,option = "C")
 p <- p + geom_abline(slope=1,intercept=0)
 p
 
@@ -157,7 +131,7 @@ p
 ```{r byarea, echo=FALSE, fig.height = 13, fig.width = 13, fig.cap = "Relationship between iRec and Creel estimaes by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
 p <- ggplot(datxy)
-p <- p + geom_point(aes(x=CREEL, y=IREC,color=AREA, shape=DISPOSITION),size=2)
+p <- p + geom_point(aes(x=CREEL, y=IREC,color=SURVEY, shape=SURVEY),size=2, alpha=.5)
 #p <- p + facet_wrap(~AREA, scales="free")
 p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
 p <- p + scale_color_viridis_d()
@@ -172,10 +146,10 @@ p
 ```{r byyear, echo=FALSE, fig.height = 13, fig.width = 13, fig.cap = "Relationship between iRec and Creel estimaes by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
 p <- ggplot(datxy)
-p <- p + geom_point(aes(x=CREEL, y=IREC,color=DISPOSITION, shape=DISPOSITION),size=2)
+p <- p + geom_point(aes(x=CREEL, y=IREC,color=SURVEY, shape=SURVEY),size=2, alpha=.5)
 p <- p + facet_wrap(~YEAR, scales="free")
 p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
-p <- p + scale_color_viridis_d(end = 0.8,option = "A")
+p <- p + scale_color_viridis_d(end = 0.8,option = "C")
 #p <- p + coord_cartesian(ylim=c(0,max(datxy$CREEL,datxy$IREC, na.rm=T)),xlim=c(0,max(datxy$CREEL,datxy$IREC,na.rm=T)))
 p <- p + geom_abline(slope=1,intercept=0)
 p <- p + theme(legend.position="bottom")
@@ -222,7 +196,7 @@ grid.draw(rbind(ggplotGrob(p), ggplotGrob(p2), size = "last"))
 ```{r ratbyarea, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Ratio between iRec and Creel estimates by area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
 
-p <- ggplot(datxy, aes(x=as.factor(AREA),y=ratio, color=DISPOSITION))
+p <- ggplot(datxy, aes(x=as.factor(AREA),y=ratio, color=SURVEY))
 p <- p + geom_boxplot(width=1, position = position_dodge(width = 1))
 p <- p +geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
 p <- p + scale_color_viridis_d(end = 0.8,option = "A")
@@ -230,7 +204,7 @@ p <- p + theme_bw(16)+labs( x="month", y="iRec:creel")
 p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
 
 
-p2 <- ggplot(datxy, aes(x=as.factor(AREA),y=ratio, color=DISPOSITION))
+p2 <- ggplot(datxy, aes(x=as.factor(AREA),y=ratio, color=SURVEY))
 p2 <- p2 + geom_boxplot(width=1, position = position_dodge(width = 1))
 p2 <- p2 +geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
 p2 <- p2 + scale_color_viridis_d(end = 0.8,option = "A")
@@ -251,14 +225,14 @@ grid.draw(rbind(ggplotGrob(p), ggplotGrob(p2), size = "last"))
 ```{r ratbyyear, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Ratio between iRec and Creel estimates by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
 
-p <- ggplot(datxy, aes(x=as.factor(YEAR),y=ratio, color=DISPOSITION))
+p <- ggplot(datxy, aes(x=as.factor(YEAR),y=ratio, color=SURVEY))
 p <- p + geom_boxplot(width=1, position = position_dodge(width = 1))
 p <- p + geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
 p <- p + scale_color_viridis_d(end = 0.8,option = "A")
 p <- p + theme_bw(16)+labs( x="year", y="iRec:creel")
 p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
 
-p2 <- ggplot(datxy, aes(x=as.factor(YEAR),y=ratio, color=DISPOSITION))
+p2 <- ggplot(datxy, aes(x=as.factor(YEAR),y=ratio, color=SURVEY))
 p2 <- p2 + geom_boxplot(width=1, position = position_dodge(width = 1))
 p2 <- p2 + geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
 p2 <- p2 + scale_color_viridis_d(end = 0.8,option = "A")
