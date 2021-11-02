@@ -1,12 +1,11 @@
 ---
-title: "Irec and creel data exploration"
+title: "Irec and creel initial analysis and data exploration"
 author: "Catarina Wor"
 date:  "`r format(Sys.time(), '%B %Y')`"
 output: bookdown::html_document2
 ---
 
-
-This version contains qualty control for creel data. 
+ 
 
 ```{r load, include=FALSE}
 
@@ -16,14 +15,32 @@ library(grid)
 #rmarkdown::render("irec_summary.Rmd")
 
 #read in data
-
 creel<-read.csv("../data/creel_filter.csv")
 irec<-read.csv("../data/iRecchinook_2012_2021.csv")
+
+arealu <- read.csv("../data/areaLU.csv") 
 
 
 ```
 
+
+
+# Data groupings decisions
+
+Based on previus explorations of dtat distributions  the following decisions were made:
+
+- Exclude year 2012, because it is the first year in which iRec became operational and the data distribution for that year looked visibly different from that for orther years. 
+- Group areas by logistical area following the lu_grouping3 provided by Kris Hein, which group all the PFMAs into `sum(!is.na(unique(arealu$LU_GROUPING3)))` areas. 
+- Inspection of the creel quality control did not seem to show a lot of difference in the distribution of the data. For now we will opt to include all creel data.
+- iRec data is inputed: any missing observations are inputed with 0's. If no survey respondant said they caught a chinook, then our estimate is 0. 
+- Months were aggregates into offseason (October-April) and peakseanon(May-September).
+
+
 ```{r wrangleirec, include=FALSE}
+
+creel<- creel%>%
+      rename(AREA=PFMA)%>%left_join(arealu[,c("AREA","LU_GROUPING3")])%>%
+      filter(YEAR>2012)
 
 #input 0s for missing observations on irec
 #create df for all possible observations - using variables of interest only
@@ -33,44 +50,27 @@ allobs <- expand.grid(list(AREA=unique(irec$AREA),
   MONTH=unique(irec$MONTH),
   DISPOSITION=unique(irec$DISPOSITION)))
 
-irecall<-left_join(allobs,irec)
+#create zero observations and remove in river fisheries
+irecall<-left_join(allobs,irec) %>%
+filter(AREA != "Area 29 (In River)", YEAR>2012)
+
 irecall$ESTIMATE[is.na(irecall$ESTIMATE)]<-0
+
+irecall<-irecall%>%left_join(arealu[,c("AREA","LU_GROUPING3")])
 
 
 irecc<- irecall %>%
   #rename(IREC=ESTIMATE)%>%
-  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,VARIANCE))%>%
-  group_by( AREA,YEAR,MONTH,DISPOSITION) %>% summarise(ESTIMATE = sum(ESTIMATE), VARIANCE = sum(VARIANCE))%>%
+  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,VARIANCE,LU_GROUPING3))%>%
+  group_by( AREA,YEAR,MONTH,DISPOSITION,LU_GROUPING3) %>% summarise(ESTIMATE = sum(ESTIMATE), VARIANCE = sum(VARIANCE))%>%
   mutate(SD=sqrt(VARIANCE))%>%
   select(c(!VARIANCE))%>%
   mutate(SURVEY="iRec")
 
+
 ```
 
 ```{r wranglecreel, include=FALSE}
-
-
-creelc<- creel %>%
-  filter(ESTIMATE_SOURCE=="Creel")%>%
-  rename(AREA=PFMA, SD=STANDARD_ERROR,DISPOSITION=TYPE)%>%
-  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD))%>%
-  mutate(SURVEY="creel")
-
-creelc15<- creel %>%
-  filter(ESTIMATE_SOURCE=="Creel",  Include..15.=="Y")%>%
-  rename(AREA=PFMA, SD=STANDARD_ERROR,DISPOSITION=TYPE)%>%
-  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD))%>%
-  mutate(SURVEY="creel15")
-
-creelc20<- creel %>%
-  filter(ESTIMATE_SOURCE=="Creel",  Include..20.=="Y")%>%
-  rename(AREA=PFMA, SD=STANDARD_ERROR,DISPOSITION=TYPE)%>%
-  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD))%>%
-  mutate(SURVEY="creel20")
-
-dat<-rbind(creelc,creelc15,creelc20,irecc)
-
-
 
 
 creelf<- creel %>%
@@ -79,8 +79,8 @@ creelf<- creel %>%
   Include..20.=="Y"~ "creel20",
   Include..15.=="Y"~ "creel15",
   TRUE ~ "creel"))%>%
-  rename(AREA=PFMA, SD=STANDARD_ERROR,DISPOSITION=TYPE)%>%
-  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD, SURVEY))
+  rename(SD=STANDARD_ERROR,DISPOSITION=TYPE)%>%
+  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD, SURVEY, LU_GROUPING3))
 
 
 
@@ -93,17 +93,13 @@ rename(IREC=ESTIMATE,SDIREC=SD)%>%
   select(c(!SURVEY))
 
 
-datxy<-left_join(ireccc,creelcc)
+datxy<-left_join(ireccc,creelcc) %>%
+mutate(SEASON=if_else(MONTH<5|MONTH>9,"offseason","peakseason"))
 
-unique(datxy$SURVEY)
+
+
 
 ```
-
-**A few notes on the current data:**
-
- - The creel data does not include the quality control, e.g. creel data for september may only include estimates up to labour day. - Rob and I will get together and discuss a few quality control scenarios, but I wanted to disribute this before our meeting.
- - iRec data was inputed: any missing observations were inputed with 0's. If no survey respondant said they caught a chinook, then our estimate is 0. 
-- If there is any particular plot that you would like to see, let me know. 
 
 
 
@@ -116,8 +112,8 @@ unique(datxy$SURVEY)
 ```{r relbymonth, echo=FALSE, fig.height = 8, fig.width = 14, fig.cap = "Relationship between iRec and Creel estimates by  month and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
 p <- ggplot(datxy)
-p <- p + geom_point(aes(x=CREEL, y=IREC,color=SURVEY, shape=SURVEY), size=2,alpha=.5)
-p <- p + facet_wrap(~MONTH, scales="free")
+p <- p + geom_point(aes(x=CREEL, y=IREC,color=DISPOSITION, shape=DISPOSITION), size=2,alpha=.5)
+p <- p + facet_wrap(~SEASON, scales="free")
 p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
 p <- p + scale_color_viridis_d(end = 0.8,option = "C")
 p <- p + geom_abline(slope=1,intercept=0)
@@ -131,10 +127,10 @@ p
 ```{r byarea, echo=FALSE, fig.height = 13, fig.width = 13, fig.cap = "Relationship between iRec and Creel estimaes by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
 p <- ggplot(datxy)
-p <- p + geom_point(aes(x=CREEL, y=IREC,color=SURVEY, shape=SURVEY),size=2, alpha=.5)
-#p <- p + facet_wrap(~AREA, scales="free")
+p <- p + geom_point(aes(x=CREEL, y=IREC,color=DISPOSITION, shape=DISPOSITION),size=2, alpha=.5)
+p <- p + facet_wrap(~LU_GROUPING3, scales="free")
 p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
-p <- p + scale_color_viridis_d()
+p <- p + scale_color_viridis_d(end = 0.8,option = "C")
 #p <- p + coord_cartesian(ylim=c(0,max(datxy$CREEL,datxy$IREC, na.rm=T)),xlim=c(0,max(datxy$CREEL,datxy$IREC,na.rm=T)))
 p <- p + geom_abline(slope=1,intercept=0)
 p <- p + theme(legend.position="bottom")
@@ -146,15 +142,74 @@ p
 ```{r byyear, echo=FALSE, fig.height = 13, fig.width = 13, fig.cap = "Relationship between iRec and Creel estimaes by  area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
 p <- ggplot(datxy)
-p <- p + geom_point(aes(x=CREEL, y=IREC,color=SURVEY, shape=SURVEY),size=2, alpha=.5)
+p <- p + geom_point(aes(x=CREEL, y=IREC,color=DISPOSITION, shape=DISPOSITION),size=2, alpha=.5)
 p <- p + facet_wrap(~YEAR, scales="free")
 p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
 p <- p + scale_color_viridis_d(end = 0.8,option = "C")
-#p <- p + coord_cartesian(ylim=c(0,max(datxy$CREEL,datxy$IREC, na.rm=T)),xlim=c(0,max(datxy$CREEL,datxy$IREC,na.rm=T)))
+
 p <- p + geom_abline(slope=1,intercept=0)
 p <- p + theme(legend.position="bottom")
 p
 ```
+
+
+## Look at proportions of zeroes in the data
+
+
+```{r propzero,include=FALSE}
+
+prop0 <-function(x){sum(x==0)/length(x)}
+
+aggregate(datxy$IREC,by=list(datxy$MONTH),prop0)
+aggregate(datxy$IREC,by=list(datxy$LU_GROUPING3),prop0)
+aggregate(datxy$IREC,by=list(datxy$YEAR),prop0)
+
+sum(datxy$IREC==0)/nrow(datxy)
+
+
+
+
+
+```
+
+
+
+
+
+## Initial analysis
+
+Questions:
+
+- How to inform the brm function of the SD estimates for both IREC and Creel variables? the se option for the response variable is only available for normal, student t and skewed normal options ( I changed the code below just for testing. I am wondering if I could use weights() and weight observations by 1/SDIREC, not the same as including a latent variable though. 
+- How do I suppress the intercept? We want the model to have a 0 intercept. 
+- There are quite a few missing values in the explanatory variables. I think these points are being dropped from the model fit. But I may want to predict for those values later, how would I do that?
+- How would I consider area (LU_GROUPING3) a hierarchical variable?  
+
+
+```{r propzero,include=FALSE}
+
+
+# This model is just a firs attempt
+fit1 <- brm(formula= IREC |se(SDIREC,sigma = TRUE) ~ CREEL|LU_GROUPING3 + SEASON,
+  data=datxy, family=gaussian)
+
+
+stancode(fit1)
+sdata <- standata(fit1)
+names(sdata)
+
+### obtain model summaries and plots
+summary(fit1, waic = TRUE)
+plot(fit1, ask = FALSE)
+plot(marginal_effects(fit1), ask = FALSE)
+
+
+```
+
+
+
+
+
 
 ## iRec:creel ratio by month
 
@@ -196,20 +251,20 @@ grid.draw(rbind(ggplotGrob(p), ggplotGrob(p2), size = "last"))
 ```{r ratbyarea, echo=FALSE, fig.height = 6, fig.width = 9, fig.cap = "Ratio between iRec and Creel estimates by area and disposition (kept or released) for the year of 2020. Line indicates 1:1 ratio."}
 
 
-p <- ggplot(datxy, aes(x=as.factor(AREA),y=ratio, color=SURVEY))
+p <- ggplot(datxy, aes(x=as.factor(LU_GROUPING3),y=ratio, color=DISPOSITION))
 p <- p + geom_boxplot(width=1, position = position_dodge(width = 1))
 p <- p +geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
 p <- p + scale_color_viridis_d(end = 0.8,option = "A")
-p <- p + theme_bw(16)+labs( x="month", y="iRec:creel")
-p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+p <- p + theme_bw(16)+labs( x="Area", y="iRec:creel")
+p <- p + theme(axis.text.x = element_text(angle = 45, hjust=1))
 
 
-p2 <- ggplot(datxy, aes(x=as.factor(AREA),y=ratio, color=SURVEY))
+p2 <- ggplot(datxy, aes(x=as.factor(LU_GROUPING3),y=ratio, color=DISPOSITION))
 p2 <- p2 + geom_boxplot(width=1, position = position_dodge(width = 1))
 p2 <- p2 +geom_hline(aes(yintercept=1),size=1.1, alpha=.5)
 p2 <- p2 + scale_color_viridis_d(end = 0.8,option = "A")
-p2 <- p2 + theme_bw(16)+labs( x="month", y="iRec:creel")
-p2 <- p2 + theme(axis.text.x = element_text(angle = 45, hjust=1))+labs( x="Area", y="count")
+p2 <- p2 + theme_bw(16)+labs( x="Area", y="iRec:creel")
+p2 <- p2 + theme(axis.text.x = element_text(angle = 45, hjust=1))
 p2 <- p2 + coord_cartesian( ylim = c(0,15))
 
 
