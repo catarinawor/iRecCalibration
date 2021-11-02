@@ -12,7 +12,7 @@ output: bookdown::html_document2
 library(ggplot2)
 library(dplyr)
 library(grid)
-#rmarkdown::render("irec_summary.Rmd")
+#rmarkdown::render("irec_creel.Rmd")
 
 #read in data
 creel<-read.csv("../data/creel_filter.csv")
@@ -155,6 +155,7 @@ p
 
 ## Look at proportions of zeroes in the data
 
+Proportion of zeroes in irec is `sum(datxy$IREC==0)/nrow(datxy)`
 
 ```{r propzero,include=FALSE}
 
@@ -172,8 +173,35 @@ sum(datxy$IREC==0)/nrow(datxy)
 
 ```
 
+```{r echo=FALSE,results = 'asis'}
+
+prop0 <-function(x){sum(x==0)/length(x)}
+
+kable(aggregate(datxy$IREC,by=list(datxy$MONTH),prop0), caption="proportion of zeroes in irec by month ")
 
 
+
+```
+
+```{r echo=FALSE,results = 'asis'}
+
+prop0 <-function(x){sum(x==0)/length(x)}
+
+kable(aggregate(datxy$IREC,by=list(datxy$MONTH),prop0), caption="proportion of zeroes in irec by month ")
+
+
+
+```
+
+```{r echo=FALSE,results = 'asis'}
+
+prop0 <-function(x){sum(x==0)/length(x)}
+
+kable(aggregate(datxy$IREC,by=list(datxy$MONTH),prop0), caption="proportion of zeroes in irec by month ")
+
+
+
+```
 
 
 ## Initial analysis
@@ -182,26 +210,27 @@ Questions:
 
 - How to inform the brm function of the SD estimates for both IREC and Creel variables? the se option for the response variable is only available for normal, student t and skewed normal options ( I changed the code below just for testing. I am wondering if I could use weights() and weight observations by 1/SDIREC, not the same as including a latent variable though. 
 - How do I suppress the intercept? We want the model to have a 0 intercept. 
-- There are quite a few missing values in the explanatory variables. I think these points are being dropped from the model fit. But I may want to predict for those values later, how would I do that?
 - How would I consider area (LU_GROUPING3) a hierarchical variable?  
+- There are quite a few missing values in the explanatory variables. I think these points are being dropped from the model fit. But I may want to predict for those values later, how would I do that?
 
 
 ```{r propzero,include=FALSE}
 
 
-# This model is just a firs attempt
-fit1 <- brm(formula= IREC |se(SDIREC,sigma = TRUE) ~ CREEL|LU_GROUPING3 + SEASON,
-  data=datxy, family=gaussian)
+# This model is just a first attempt to get brm working
+# Do not run when rendering as the results are not meaningful and it takes a loooong time to run
+#fit1 <- brm(formula= IREC |se(SDIREC,sigma = TRUE) ~ CREEL|LU_GROUPING3 + SEASON + 0,
+#  data=datxy, family=gaussian)
 
 
-stancode(fit1)
-sdata <- standata(fit1)
-names(sdata)
+#stancode(fit1)
+#sdata <- standata(fit1)
+#names(sdata)
 
 ### obtain model summaries and plots
-summary(fit1, waic = TRUE)
-plot(fit1, ask = FALSE)
-plot(marginal_effects(fit1), ask = FALSE)
+#summary(fit1, waic = TRUE)
+#plot(fit1, ask = FALSE)
+#plot(marginal_effects(fit1), ask = FALSE)
 
 
 ```
