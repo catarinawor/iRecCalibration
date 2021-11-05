@@ -12,6 +12,7 @@ output: bookdown::html_document2
 library(ggplot2)
 library(dplyr)
 library(grid)
+library(brms)
 #rmarkdown::render("irec_creel.Rmd")
 
 #read in data
@@ -98,7 +99,6 @@ mutate(SEASON=if_else(MONTH<5|MONTH>9,"offseason","peakseason"))
 
 
 
-
 ```
 
 
@@ -119,6 +119,14 @@ p <- p + scale_color_viridis_d(end = 0.8,option = "C")
 p <- p + geom_abline(slope=1,intercept=0)
 p
 
+p <- ggplot(datxy,aes(x=CREEL, y=IREC,color=as.factor(MONTH)))
+p <- p + geom_point(size=2, alpha=.5)
+p <- p + geom_smooth(method = lm, se     = FALSE, size   = 1, alpha  = .8) # to add regression line
+p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
+p <- p + scale_color_viridis_d(end = 0.9,option = "D")
+p <- p + theme(legend.position="bottom")
+p
+
 
 ```
 
@@ -133,6 +141,16 @@ p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
 p <- p + scale_color_viridis_d(end = 0.8,option = "C")
 #p <- p + coord_cartesian(ylim=c(0,max(datxy$CREEL,datxy$IREC, na.rm=T)),xlim=c(0,max(datxy$CREEL,datxy$IREC,na.rm=T)))
 p <- p + geom_abline(slope=1,intercept=0)
+p <- p + theme(legend.position="bottom")
+p
+
+
+
+p <- ggplot(datxy,aes(x=CREEL, y=IREC,color=LU_GROUPING3))
+p <- p + geom_point(size=2, alpha=.5)
+p <- p + geom_smooth(method = lm, se     = FALSE, size   = 1, alpha  = .8) # to add regression line
+p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
+p <- p + scale_color_viridis_d(end = 0.8,option = "C")
 p <- p + theme(legend.position="bottom")
 p
 ```
@@ -179,8 +197,6 @@ prop0 <-function(x){sum(x==0)/length(x)}
 
 knitr::kable(aggregate(datxy$IREC,by=list(datxy$MONTH),prop0), caption="proportion of zeroes in irec by month ")
 
-
-
 ```
 
 ```{r echo=FALSE,results = 'asis'}
@@ -189,8 +205,6 @@ prop0 <-function(x){sum(x==0)/length(x)}
 
 knitr::kable(aggregate(datxy$IREC,by=list(datxy$LU_GROUPING3),prop0), caption="proportion of zeroes in irec by area ")
 
-
-
 ```
 
 ```{r echo=FALSE,results = 'asis'}
@@ -198,8 +212,6 @@ knitr::kable(aggregate(datxy$IREC,by=list(datxy$LU_GROUPING3),prop0), caption="p
 prop0 <-function(x){sum(x==0)/length(x)}
 
 knitr::kable(aggregate(datxy$IREC,by=list(datxy$YEAR),prop0), caption="proportion of zeroes in irec by year ")
-
-
 
 ```
 
@@ -221,8 +233,8 @@ Questions:
 
 # This model is just a first attempt to get brm working
 # Do not run when rendering as the results are not meaningful and it takes a loooong time to run
-#fit1 <- brm(formula= IREC |se(SDIREC,sigma = TRUE) ~ CREEL|LU_GROUPING3 + SEASON + 0,
-#  data=datxy, family=gaussian)
+ fit1 <- brm(formula= IREC |se(SDIREC,sigma = TRUE) ~ -1 + CREEL + SEASON + (-1 + CREEL |LU_GROUPING3), 
+  data=datxy, family=gaussian)
 
 
 #stancode(fit1)
