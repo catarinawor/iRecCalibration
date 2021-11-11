@@ -233,9 +233,32 @@ Questions:
 
 # This model is just a first attempt to get brm working
 # Do not run when rendering as the results are not meaningful and it takes a loooong time to run
- fit1 <- brm(formula= IREC |se(SDIREC,sigma = TRUE) ~ -1 + CREEL + SEASON + (-1 + CREEL |LU_GROUPING3), 
-  data=datxy, family=gaussian)
+ fit1 <- brm(formula= IREC |se(SDIREC,sigma = TRUE) ~ -1 +  (-1 + CREEL |LU_GROUPING3) , 
+  data=datxy, family=gaussian, iter = 200,chains=2)
 
+fit2 <- brm(formula= IREC |se(SDIREC,sigma = TRUE) ~ -1 +  ( CREEL |LU_GROUPING3) , 
+  data=datxy, family=gaussian, iter = 200,chains=2)
+
+(mean(datxy$SDIREC[datxy$SDIREC>0]))
+
+#add measurement error as latent variable - mi does not accept NA or zero variances
+#Infill SDIREC
+
+
+
+
+min(datxy$IREC[!is.na(datxy$SDIREC)&datxy$IREC>0])
+summary(datxynna)
+bform <- bf(IREC | mi(SDIREC) ~ -1 +  (-1 + CREEL |LU_GROUPING3))
+fitmi <- brm(formula= bform , data=datxynna, family=gaussian, iter = 2000,chains=2)
+
+summary(fitmi)
+
+
+summary(fit1)
+summary(fit2)
+
+?brm
 
 #stancode(fit1)
 #sdata <- standata(fit1)
@@ -244,8 +267,8 @@ Questions:
 ### obtain model summaries and plots
 #summary(fit1, waic = TRUE)
 #plot(fit1, ask = FALSE)
-#plot(marginal_effects(fit1), ask = FALSE)
-
+#plot(conditional_effects(fit1), ask = FALSE)
+#pairs(fit1)
 
 ```
 
