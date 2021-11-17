@@ -153,6 +153,16 @@ p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
 p <- p + scale_color_viridis_d(end = 0.8,option = "C")
 p <- p + theme(legend.position="bottom")
 p
+
+
+p <- ggplot(datxy,aes(CREEL))
+p <- p + geom_histogram()
+p <- p + facet_wrap(~LU_GROUPING3, scales="free")
+p <- p + theme_bw(16)
+p <- p + theme(legend.position="bottom")
+p
+
+
 ```
 
 # Relationship by year
@@ -231,35 +241,33 @@ Questions:
 ```{r test model,include=FALSE}
 
 
+
+
+#resample the data
+#Does sampling needs to be startified?
+#Sampling should occur on or after the exclusion of the NAs?
+dats<-datxy[sample(seq_len(nrow(datxy)), nrow(datxy), replace = TRUE),]
+
+
 # This model is just a first attempt to get brm working
 # Do not run when rendering as the results are not meaningful and it takes a loooong time to run
- fit1 <- brm(formula= IREC |se(SDIREC,sigma = TRUE) ~ -1 +  (-1 + CREEL |LU_GROUPING3) , 
-  data=datxy, family=gaussian, iter = 200,chains=2)
-
-fit2 <- brm(formula= IREC |se(SDIREC,sigma = TRUE) ~ -1 +  ( CREEL |LU_GROUPING3) , 
-  data=datxy, family=gaussian, iter = 200,chains=2)
-
-(mean(datxy$SDIREC[datxy$SDIREC>0]))
-
-#add measurement error as latent variable - mi does not accept NA or zero variances
-#Infill SDIREC
-
-
-
-
-min(datxy$IREC[!is.na(datxy$SDIREC)&datxy$IREC>0])
-summary(datxynna)
-bform <- bf(IREC | mi(SDIREC) ~ -1 +  (-1 + CREEL |LU_GROUPING3))
-fitmi <- brm(formula= bform , data=datxynna, family=gaussian, iter = 2000,chains=2)
-
-summary(fitmi)
-
+fit1 <- brm(formula= IREC  ~ -1 + CREEL +(-1  |LU_GROUPING3) , 
+  data=dats, family=hurdle_lognormal, iter = 600,chains=2)
 
 summary(fit1)
+plot(fit1, ask = FALSE)
+plot(conditional_effects(fit1), ask = FALSE)
+
+
+fit2 <- brm(formula= IREC  ~ -1 + CREEL +(-1 + CREEL  |LU_GROUPING3) , 
+  data=dats, family=hurdle_lognormal, iter = 600,chains=2)
 summary(fit2)
+pairs(fit2)
+plot(fit2, ask = FALSE)
+plot(conditional_effects(fit2), ask = FALSE)
+launch_shiny(fit1)
 
-?brm
-
+LOO(fit2)
 #stancode(fit1)
 #sdata <- standata(fit1)
 #names(sdata)
