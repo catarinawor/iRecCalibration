@@ -1,0 +1,60 @@
+IREC_LOGISTICAL_AREA,AREA,PROGRAM,CREEL_LOGISTICAL_AREA,LU_GROUPING1,LU_GROUPING2,LU_GROUPING3
+Haida Gwaii,Area 1,Haida Gwaii,PFMA 1,Haida Gwaii,PFMA 1,Haida Gwaii
+Haida Gwaii,Area 101,NA,NA,Haida Gwaii,PFMA 101,Haida Gwaii
+Prince Rupert,Area 103,NA,NA,Prince Rupert,PFMA 103,Prince Rupert
+Central Coast,Area 107,NA,NA,Central Coast,PFMA 107,Central Coast
+Port Hardy,Area 11,Johnstone Strait,Queen Charlotte Sound,Johnstone Strait,Queen Charlotte Sound,Port Hardy
+Port Hardy,Area 12,Johnstone Strait,Johnstone Strait,Johnstone Strait,Johnstone Strait,Port Hardy
+Port Renfrew,Area 121,Renfrew/Swiftsure,Swiftsure Bank,Renfrew/Swiftsure,Swiftsure Bank,Port Renfrew
+Barkley,Area 123,Barkley Sound,Offshore Barkley,Barkley Sound,Offshore Barkley,Barkley
+Tofino,Area 124,Clayoquot Sound,Offshore Clayoquot,Clayoquot Sound,Offshore Clayoquot,Tofino
+Tahsis/Nootka,Area 125,Nootka Sound,Offshore Nootka,Nootka Sound,Offshore Nootka,Tahsis/Nootka
+Kyuquot,Area 126,Kyuquot Sound,Offshore Kyuquot,Kyuquot Sound,Offshore Kyuquot,Kyuquot
+Winter Harbour,Area 127,Quatsino Sound,Offshore Quatsino,Quatsino Sound,Offshore Quatsino,Winter Harbour
+Campbell River,Area 13,Georgia Strait,Campbell River,Georgia Strait,Campbell River,Campbell River
+Campbell River,Area 14,Georgia Strait,Comox,Georgia Strait,Comox,Campbell River
+Sunshine Coast,Area 15,Georgia Strait,Powell River,Georgia Strait,Powell River,Sunshine Coast
+Sunshine Coast,Area 16,Georgia Strait,Sunshine Coast,Georgia Strait,Sunshine Coast,Sunshine Coast
+Nanaimo,Area 17,Georgia Strait,Nanaimo,Georgia Strait,Nanaimo,Nanaimo
+Nanaimo,Area 18,Georgia Strait,Gulf Islands,Georgia Strait,Gulf Islands,Nanaimo
+Victoria,Area 19,NA,NA,Georgia Strait,Victoria,Victoria
+Haida Gwaii,Area 2,NA,NA,Haida Gwaii,PFMA 2,Haida Gwaii
+Victoria,Area 20,Juan de Fuca,Juan de Fuca,Juan de Fuca,Juan de Fuca,Victoria
+Port Renfrew,Area 21,Renfrew/Swiftsure,Nitinat,Renfrew/Swiftsure,Nitinat,Port Renfrew
+Barkley,Area 23,NA,NA,Barkley Sound,Barkley Sound,Barkley
+Tahsis/Nootka,Area 25,Nootka Sound,Nootka Snd. / Esperanza Inlet,Nootka Sound,Nootka Snd. / Esperanza Inlet,Tahsis/Nootka
+Kyuquot,Area 26,Kyuquot Sound,Kyuquot Sound,Kyuquot Sound,Kyuquot Sound,Kyuquot
+Winter Harbour,Area 27,Quatsino Sound,Quatsino Sound,Quatsino Sound,Quatsino Sound,Winter Harbour
+Vancouver,Area 28,Georgia Strait,Howe Sound,Georgia Strait,Howe Sound,Vancouver
+Vancouver,Area 29,Georgia Strait,Vancouver,Georgia Strait,Vancouver,Vancouver
+Prince Rupert,Area 3,Prince Rupert,PFMA 3,Prince Rupert,PFMA 3,Prince Rupert
+Prince Rupert,Area 4,Prince Rupert,PFMA 4,Prince Rupert,PFMA 4,Prince Rupert
+Central Coast,Area 5,NA,NA,Central Coast,PFMA 5,Central Coast
+Central Coast,Area 6,Central Coast,PFMA 6,Central Coast,PFMA 6,Central Coast
+Central Coast,Area 7,Central Coast,PFMA 7,Central Coast,PFMA 7,Central Coast
+Central Coast,Area 8,Central Coast,PFMA 8,Central Coast,PFMA 8,Central Coast
+Central Coast,Area 9,Central Coast,PFMA 9,Central Coast,PFMA 9,Central Coast
+Haida Gwaii,Area 102,NA,NA,Haida Gwaii,PFMA 102,Haida Gwaii
+Central Coast,Area 106,NA,NA,Central Coast,PFMA 106,Central Coast
+Central Coast,Area 110,NA,NA,Central Coast,Offshore Cape Caution,Central Coast
+Port Hardy,Area 111,Johnstone Strait,Offshore Queen Charlotte Sound,Johnstone Strait,Offshore Queen Charlotte Sound,Port Hardy
+Haida Gwaii,Area 142,NA,NA,Haida Gwaii,PFMA 142,Haida Gwaii
+Tofino,Area 24,Clayoquot Sound,Clayoquot Sound,Clayoquot Sound,Clayoquot Sound,Tofino
+Central Coast,Area 109,NA,NA,Central Coast,PFMA 109,Central Coast
+Port Renfrew,Area 22,NA,NA,Renfrew/Swiftsure,Nitinat Lake,Port Renfrew
+Prince Rupert,Area 104,NA,NA,Prince Rupert,PFMA 104,Prince Rupert
+Central Coast,Area 105,NA,NA,Central Coast,PFMA 105,Central Coast
+Central Coast,Area 10,NA,NA,Johnstone Strait,Cape Caution,Central Coast
+Central Coast,Area 108,NA,NA,Central Coast,PFMA 108,Central Coast
+Victoria,Area 19 (GS),Georgia Strait,Sannich Inlet / Sannich,Georgia Strait,Sannich Inlet / Sannich,Victoria
+Victoria,Area 19 (JDF),Juan de Fuca,Victoria,Juan de Fuca,Victoria,Victoria
+Barkley,Area 23 (Barkley),Barkley Sound,Barkley Sound,Barkley Sound,Barkley Sound,Barkley
+Vancouver,Area 29 (Marine),NA,NA,Georgia Strait,Vancouver,Vancouver
+Port Alberni,Area 23 (Alberni Canal),Barkley Sound,Alberni Inlet,Barkley Sound,Alberni Inlet,Port Alberni
+Haida Gwaii,Area 2W,Haida Gwaii,Haida Gwaii,Haida Gwaii,Haida Gwaii,Haida Gwaii
+Haida Gwaii,Area 2E,Haida Gwaii,Haida Gwaii,Haida Gwaii,Haida Gwaii,Haida Gwaii
+Lower Fraser River,Area 29 (In River),NA,NA,NA,NA,NA
+Prince Rupert,Area 130,NA,NA,Prince Rupert,PFMA 130,Prince Rupert
+Victoria,Area 20 (East),Juan de Fuca,Juan de Fuca,Juan de Fuca,Juan de Fuca,Victoria
+Port Renfrew,Area 20 (West),Renfrew/Swiftsure,Juan de Fuca,Renfrew/Swiftsure,Juan de Fuca,Port Renfrew
+NA,Area 13 SoG,Georgia Strait,Campbell River,Georgia Strait,Campbell River,Campbell River
