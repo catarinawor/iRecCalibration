@@ -27,9 +27,8 @@ library(ggrepel)
 library(posterior)
 
 #read in data
-creel<-read.csv("../data/creel_filter.csv")
-irec<-read.csv("../data/iRecchinook_2012_2021.csv")
-
+creel <- read.csv("../data/creel_filter.csv")
+irec <- read.csv("../data/iRecchinook_2012_2021.csv")
 arealu <- read.csv("../data/areaLU.csv") 
 
 #data wrangle
@@ -118,7 +117,7 @@ aggregate(datnna$CREEL,by=list(datnna$YEAR),prop0)
 p <- ggplot(datnna,aes(y=CREEL, x=IREC,color=LU_GROUPING3))
 p <- p + geom_point(size=2, alpha=.5)
 p <- p + geom_smooth(method = lm, formula= y~0+x, se     = FALSE, size   = 1, alpha  = .8) # to add regression line
-p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
+p <- p + theme_bw(16)+labs( y="CREEL", x="iREC")
 p <- p + scale_color_viridis_d(end = 0.8,option = "C")
 p <- p + theme(legend.position="bottom")
 p
@@ -127,7 +126,7 @@ p
 p <- ggplot(datnna,aes(y=CREEL, x=IREC,color=as.factor(MONTH)))
 p <- p + geom_point(size=2, alpha=.5)
 p <- p + geom_smooth(method = lm, formula= y~0+x, se     = FALSE, size   = 1, alpha  = .8) # to add regression line
-p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
+p <- p + theme_bw(16)+labs( y="CREEL", x="iREC")
 p <- p + scale_color_viridis_d(end = 0.8,option = "B")
 p <- p + theme(legend.position="bottom")
 p
@@ -160,10 +159,9 @@ p
 #resample the data
 #Does sampling needs to be startified?
 #Sampling should occur on or after the exclusion of the NAs?
-dats<-datnna[sample(seq_len(nrow(datnna)), nrow(datnna), replace = TRUE),]
+dats <- datnna#[sample(seq_len(nrow(datnna)), nrow(datnna), replace = TRUE),]
 
 summary(dats)
-aggregate(dats$MONTH,by=list(dats$MONTH),length)
 # This model is just a first attempt to get brm working
 # Do not run when rendering as the results are not meaningful and it takes a loooong time to run
 ##QUestion: I am not sure baout the model formulation: 
@@ -175,11 +173,111 @@ aggregate(dats$MONTH,by=list(dats$MONTH),length)
 #  data=dats, family=hurdle_lognormal, iter = 800,chains=2 )
 
 
+#Try the poisson model
+#round response to nearest integer
+dats$CREELint<- round(dats$CREEL)
+
+#Try the poisson model without the area hierarchical effect
+fit1 <- brm(formula =  CREELint ~ -1 +  IREC  , 
+  data=dats, family="poisson", iter = 3000,chains=3 )
+
+
+summary(fit1)
+#these are not possible because there is only one parameter.
+pairs(fit1)
+plot(fit1, ask = FALSE)
+
+#Something is wrong here. I think it has something to do with the log link
+#as I am getting simmilar patterns for all distributions with log link.
+# The one prediction for Berkely in July gets a craxy high number, lixe 2x the highest observation. 
+
+fitted_values <- fitted(fit1)
+pred1<-predict(fit1)
+
+
+plot(standata(fit1)$Y,pred1[,1])
+dat <- as.data.frame(cbind(Y = standata(fit1)$Y, fitted_values))
+ggplot(dat) + geom_point(aes(x = Y, y = Estimate))
+
+
+dat[which.max(dat$Estimate),]
+dats[dats$CREELint==dat$Y[which.max(dat$Estimate)],]
+aggregate(datnna$CREEL,by=list(datnna$LU_GROUPING3),length)
+
+
+conditional_effects(fit1, method="posterior_predict")
+loofit1<-loo(fit1, save_psis = TRUE)
+plot(loofit1)
+
+yrep <- posterior_predict(fit1)
+
+#model is overdispersed - the thick line should e uniform
+#not optimal for discrete observations though
+ppc_loo_pit_overlay(
+  y = dats$IREC[!is.na(dats$CREEL)],
+  yrep = yrep,
+  lw = weights(loofit1$"psis_object")
+)
+ #===================================
+
+
+#now with the area effect
+fit2 <- brm(formula =  CREELint ~ -1 +  IREC +(-1 +  IREC |LU_GROUPING3) , 
+  data=dats, family="poisson", iter = 3000,chains=3 )
+
+
+summary(fit2)
+#these look pretty good.
+pairs(fit2)
+plot(fit2, ask = FALSE)
+
+fitted_values2 <- fitted(fit2)
+pred2<-predict(fit2)
+
+plot(standata(fit2)$Y,pred2[,1])
+dat2 <- as.data.frame(cbind(Y = standata(fit2)$Y, fitted_values2))
+ggplot(dat2) + geom_point(aes(x = Y, y = Estimate))
+
+conditional_effects(fit2, method="posterior_predict")
+loofit1<-loo(fit2, save_psis = TRUE)
+plot(loofit1)
+
+yrep <- posterior_predict(fit2)
+
+#model is overdispersed - the thick line should be uniform
+#I need to get a bit more guidance on how to interpret it
+#not optimal for discrete observations though
+ppc_loo_pit_overlay(
+  y = dats$IREC[!is.na(dats$CREEL)],
+  yrep = yrep,
+  lw = weights(loofit1$"psis_object")
+)
+
+
+#====================================================
+#model with prediction 
+
+
+
+
+#things to look at:
+#what is the observation w=resulting in the wonky predicted value. which area is it from, 
+#if from area of few obs,  exclude the area and refit the model
+
+
+
+
+
+#hurdle lognormal model
 #flip the model 
 #if the s(MONTH, k=3) term is included then loo() crashes R
-fit2 <- brm(formula=  CREEL ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3) , 
+fit2 <- brm(formula = bf( CREEL ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3), 
+  hu ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3)),
   data=dats, family=hurdle_lognormal, iter = 1000,chains=2 )
 
+
+
+?brm
 dim(dats)
 
 summary(fit2)
