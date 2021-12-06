@@ -173,6 +173,39 @@ summary(dats)
 #  data=dats, family=hurdle_lognormal, iter = 800,chains=2 )
 
 
+#dats$CREELint<- round(dats$CREEL)
+
+#Try the gaussian model with the area hierarchical effect
+#same as current model but just 
+fit0 <- brm(formula =  CREEL ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3 ) , 
+  data=dats, family="gaussian", iter = 1000,chains=3 )
+
+
+summary(fit0)
+#these are not possible because there is only one parameter.
+#pairs(fit1)
+plot(fit0, ask = FALSE)
+
+#Something is wrong here. I think it has something to do with the log link
+#as I am getting simmilar patterns for all distributions with log link.
+# The one prediction for Berkely in July gets a craxy high number, lixe 2x the highest observation. 
+
+fitted_values0 <- fitted(fit0)
+pred0<-predict(fit0)
+
+
+plot(standata(fit0)$Y,pred0[,1])
+#Seems like a bunch of 0's are not 
+dat <- as.data.frame(cbind(Y = standata(fit0)$Y, fitted_values0))
+ggplot(dat) + geom_point(aes(x = Y, y = Estimate))
+
+conditional_effects(fit0, method="posterior_predict")
+loofit0<-loo(fit0, save_psis = TRUE)
+
+plot(loofit0)
+
+
+#=============
 #Try the poisson model
 #round response to nearest integer
 dats$CREELint<- round(dats$CREEL)
@@ -184,7 +217,7 @@ fit1 <- brm(formula =  CREELint ~ -1 +  IREC  ,
 
 summary(fit1)
 #these are not possible because there is only one parameter.
-pairs(fit1)
+#pairs(fit1)
 plot(fit1, ask = FALSE)
 
 #Something is wrong here. I think it has something to do with the log link
