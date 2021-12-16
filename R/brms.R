@@ -39,6 +39,8 @@ creel<- creel%>%
       rename(AREA=PFMA)%>%left_join(arealu[,c("AREA","LU_GROUPING3")])%>%
       filter(YEAR>2012)
 
+
+irec <- irec %>% filter(METHOD=="Angling from boat") 
 #input 0s for missing observations on irec
 #create df for all possible observations - using variables of interest only
 #if other variables are considered, need to include them here
@@ -59,7 +61,8 @@ irecall<-irecall%>%left_join(arealu[,c("AREA","LU_GROUPING3")])
 
 irecc<- irecall %>%
   select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,VARIANCE,LU_GROUPING3))%>%
-  group_by( AREA,YEAR,MONTH,DISPOSITION,LU_GROUPING3) %>% summarise(ESTIMATE = sum(ESTIMATE), VARIANCE = sum(VARIANCE))%>%
+  group_by( AREA,YEAR,MONTH,DISPOSITION,LU_GROUPING3) %>% 
+  summarise(ESTIMATE = sum(ESTIMATE), VARIANCE = sum(VARIANCE))%>%
   mutate(SD=sqrt(VARIANCE))%>%
   select(c(!VARIANCE))%>%
   mutate(SURVEY="iRec")
@@ -210,22 +213,27 @@ plot(loofit0)
 #round response to nearest integer
 dats$CREELint<- round(dats$CREEL)
 
-#Try the poisson model without the area hierarchical effect
-fit1 <- brm(formula =  CREELint ~ -1 +  IREC  , 
-  data=dats, family="poisson", iter = 3000,chains=3 )
+#the poisson model gave Rhat of 3.59! chains did not mix, everything looked terrible.
+#fit1 <- brm(formula =  CREELint ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3 )  , 
+#  data=dats, family="poisson", iter = 3000,chains=3 )
+
+#Same thing happened to the zero inlated poisson. 
+#Try the poisson model with the area hierarchical effect
+#fit1 <- brm(formula =  CREELint ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3 )  , 
+#  data=dats, family = zero_inflated_poisson(), iter = 3000,chains=3 )
 
 
-summary(fit1)
+#summary(fit1)
 #these are not possible because there is only one parameter.
 #pairs(fit1)
-plot(fit1, ask = FALSE)
+#plot(fit1, ask = FALSE)
 
 #Something is wrong here. I think it has something to do with the log link
 #as I am getting simmilar patterns for all distributions with log link.
 # The one prediction for Berkely in July gets a craxy high number, lixe 2x the highest observation. 
 
 fitted_values <- fitted(fit1)
-pred1<-predict(fit1)
+red1<-predict(fit1)
 
 
 plot(standata(fit1)$Y,pred1[,1])
@@ -254,43 +262,8 @@ ppc_loo_pit_overlay(
  #===================================
 
 
-#now with the area effect
-fit2 <- brm(formula =  CREELint ~ -1 +  IREC +(-1 +  IREC |LU_GROUPING3) , 
-  data=dats, family="poisson", iter = 3000,chains=3 )
-
-
-summary(fit2)
-#these look pretty good.
-pairs(fit2)
-plot(fit2, ask = FALSE)
-
-fitted_values2 <- fitted(fit2)
-pred2<-predict(fit2)
-
-plot(standata(fit2)$Y,pred2[,1])
-dat2 <- as.data.frame(cbind(Y = standata(fit2)$Y, fitted_values2))
-ggplot(dat2) + geom_point(aes(x = Y, y = Estimate))
-
-conditional_effects(fit2, method="posterior_predict")
-loofit1<-loo(fit2, save_psis = TRUE)
-plot(loofit1)
-
-yrep <- posterior_predict(fit2)
-
-#model is overdispersed - the thick line should be uniform
-#I need to get a bit more guidance on how to interpret it
-#not optimal for discrete observations though
-ppc_loo_pit_overlay(
-  y = dats$IREC[!is.na(dats$CREEL)],
-  yrep = yrep,
-  lw = weights(loofit1$"psis_object")
-)
-
-
 #====================================================
-#model with prediction 
-
-
+#hurdle model 
 
 
 #things to look at:
@@ -298,27 +271,37 @@ ppc_loo_pit_overlay(
 #if from area of few obs,  exclude the area and refit the model
 
 
-
-
-
 #hurdle lognormal model
 #flip the model 
 #if the s(MONTH, k=3) term is included then loo() crashes R
+#- check on default priors
+# Error: Sampling from priors is not possible as some parameters have no proper priors. Error occurred for parameter 'b'.
+fit2prior <- brm(formula = bf( CREEL ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3), 
+  hu ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3)),
+  data=dats, family=hurdle_lognormal, iter = 2000,chains=3, sample_prior = "only" ,
+  prior = c(
+    prior(normal(0, 1000), class = sigma),
+    prior(normal(0, 100), class = b, coef = IREC)
+  ))
+
+
+
+summary(fit2prior)
+
+
 fit2 <- brm(formula = bf( CREEL ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3), 
   hu ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3)),
-  data=dats, family=hurdle_lognormal, iter = 1000,chains=2 )
+  data=dats, family=hurdle_lognormal, iter = 1500,chains=3 )
 
 
 
-?brm
-dim(dats)
 
 summary(fit2)
 pairs(fit2)
 plot(fit2, ask = FALSE)
 
 #I do not undertand what is causing the extreme outliers in the predicted values
-
+#saved as fittedvals_hurdle_lognormal_noprior
 fitted_values <- fitted(fit2)
 head(fitted_values)
 dat <- as.data.frame(cbind(Y = standata(fit2)$Y, fitted_values))
@@ -333,6 +316,35 @@ dats[which.max(fitted_values[,1]),]
 
 #this plot makes no sense to me:
 conditional_effects(fit2, method="posterior_predict")
+
+p <- pp_check(fit2,
+    type = "stat",
+    ndraws = 1000,
+    stat = "median"
+  )
+
+
+
+plot.brmsMarginalEffects_shades(
+    x = marginal_effects(fit2, re_formula = NA, probs = c(0.025,0.975)),
+    y = marginal_effects(fit2, re_formula = NA, probs = c(0.1,0.9)), 
+    ask = FALSE)
+
+names(fit2$fit)
+fit2$prior
+mcmc_areas(as.matrix(fit2$fit), regex_pars = "r_[^I]", 
+  point_est = "mean", prob = 0.95, prob_outer = 0.99) + 
+ggtitle("Posterior densities with means and 95% intervals") +
+theme_bw() +
+ theme(axis.text = element_text(size = 12), panel.grid = element_blank()) +
+  xlab("Coefficient size")
+
+mcmc_areas(as.matrix(fit2$fit), regex_pars = "b_IREC",#"r_[^I]", 
+  point_est = "mean", prob = 0.95, prob_outer = 0.99) + 
+ggtitle("Posterior densities with means and 95% intervals") +
+theme_bw() +
+ theme(axis.text = element_text(size = 12), panel.grid = element_blank()) +
+  xlab("Coefficient size")
 
 
 #fit2posterior<-posterior_samples(fit2)
@@ -392,7 +404,7 @@ fit2 %>%
 # posterior predictions
 
 dats %>%
-  data_grid(LU_GROUPING3,CREEL) %>%
+  data_grid(LU_GROUPING3,IREC) %>%
   add_epred_draws(fit2) %>%
   ggplot(aes(x = .epred, y = LU_GROUPING3)) +
   stat_pointinterval(.width = c(.66, .95))
