@@ -161,6 +161,7 @@ r_nb <- DHARMa::simulateResiduals(m_nb2, n = 100)
 plot(r_nb)
 
 plot(log(dat_pos$irec), log(dat_pos$creel))
+plot((dat_pos$irec), log(dat_pos$creel))
 
 
 m <- glmmTMB(log(creel_orig) ~ 1 + log(irec) + poly(month, 3) + (1 + log(irec) | region),

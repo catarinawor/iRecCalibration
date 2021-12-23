@@ -2,156 +2,228 @@
 # iREc calibration model fit experimentations
 # Catarina Wor
 # October 2021 
+#Updated Dec 2021 - Based on Sean's explorations
 #=======================================================================
 
-
-
+library(dplyr)
+library(plyr)
 
 library(ggplot2)
-library(dplyr)
-library(grid)
+library(glmmTMB)
+library(DHARMa)
 library(brms)
-library(bayesplot)
-
-library(magrittr)
-library(dplyr)
-library(purrr)
-library(forcats)
-library(tidyr)
-library(modelr)
-library(ggdist)
 library(tidybayes)
-library(cowplot)
-library(rstan)
-library(ggrepel)
-library(posterior)
+library(gtools)
 
-#read in data
-creel <- read.csv("../data/creel_filter.csv")
-irec <- read.csv("../data/iRecchinook_2012_2021.csv")
-arealu <- read.csv("../data/areaLU.csv") 
+library("bayesplot")
 
-#data wrangle
+source(here::here("R/format-data.R"))
+dat <- format_data()
 
-#area program Logistical area table
+#see explore.R file. Sean anderson worked on a fes modesl using the data, and he reached the conclusion 
+#that the model that best describes the data is a neg binom model for instances when irec is positive 
+#and a similar model without the irec effect when irec is zero
 
-creel<- creel%>%
-      rename(AREA=PFMA)%>%left_join(arealu[,c("AREA","LU_GROUPING3")])%>%
-      filter(YEAR>2012)
+dat$creel_orig <- dat$creel
+#round creel obs so we can use negative binomial data
+dat$creel <- round(dat$creel)
+dat$log_irec1 <- log(10 + dat$irec)
 
 
-irec <- irec %>% filter(METHOD=="Angling from boat") 
-#input 0s for missing observations on irec
-#create df for all possible observations - using variables of interest only
-#if other variables are considered, need to include them here
-allobs <- expand.grid(list(AREA=unique(irec$AREA),
-  YEAR=unique(irec$YEAR),
-  MONTH=unique(irec$MONTH),
-  DISPOSITION=unique(irec$DISPOSITION)))
-
-#create zero observations and remove in river fisheries
-irecall<- left_join(allobs,irec) %>%
-#irec%>%
-filter(AREA != "Area 29 (In River)", YEAR>2012)
-
-irecall$ESTIMATE[is.na(irecall$ESTIMATE)]<-0
-
-irecall<-irecall%>%left_join(arealu[,c("AREA","LU_GROUPING3")])
+dat_pos <- filter(dat, irec > 0)
+dat_pos$log_irec <- log(dat_pos$irec)
 
 
-irecc<- irecall %>%
-  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,VARIANCE,LU_GROUPING3))%>%
-  group_by( AREA,YEAR,MONTH,DISPOSITION,LU_GROUPING3) %>% 
-  summarise(ESTIMATE = sum(ESTIMATE), VARIANCE = sum(VARIANCE))%>%
-  mutate(SD=sqrt(VARIANCE))%>%
-  select(c(!VARIANCE))%>%
-  mutate(SURVEY="iRec")
+dat_zero <- filter(dat, irec == 0)
+
+unique(dat_pos $region)
+
+unique(dat_zero$region)
 
 
-#wrangle creel data
-creelf<- creel %>%
-  filter(ESTIMATE_SOURCE=="Creel")%>%
-  mutate(SURVEY=case_when(
-  Include..20.=="Y"~ "creel20",
-  Include..15.=="Y"~ "creel15",
-  TRUE ~ "creel"))%>%
-  rename(SD=STANDARD_ERROR,DISPOSITION=TYPE)%>%
-  select(c(AREA,YEAR,MONTH,DISPOSITION,ESTIMATE,SD, SURVEY, LU_GROUPING3))
 
-creelcc<-creelf%>%
-rename(CREEL=ESTIMATE,SDCREEL=SD)
+ggplot(dat_pos, aes(x = irec, y = creel, color = region)) +
+  geom_point(alpha = .5) +
+  scale_x_log10() + scale_y_log10() +
+  geom_smooth(formula = y ~ 1 + x, method = "lm", se = FALSE)
 
-ireccc<-irecc%>%
-rename(IREC=ESTIMATE,SDIREC=SD)%>%
-  select(c(!SURVEY))
 
-datxy<-left_join(ireccc,creelcc) %>%
-mutate(SEASON=if_else(MONTH<5|MONTH>9,"offseason","peakseason"))
+ggplot(dat_zero, aes(x = month, y = creel, color = region)) +
+  geom_jitter(alpha = .5, height = 0)
 
-summary(datxy)
 
-datxy$diff <- datxy$CREEL - datxy$IREC
-p <- ggplot(datxy,aes(y=diff, x=as.factor(MONTH)))
-p <- p + geom_boxplot(width=1, position = position_dodge(width = 1))
-p <- p +geom_hline(aes(yintercept=0),size=1.1, alpha=.5)
-p <- p + scale_color_viridis_d(end = 0.8,option = "A")
-p <- p + theme_bw(16)+labs( x="month", y="creel-irec")
 
-p
+m1.1 <- glmmTMB(creel ~ 1 + log_irec + poly(month, 2) + (1 + log_irec | region), data = dat_pos, family = nbinom1(), dispformula = ~log_irec)
+summary(m1.1)
+
+r <- DHARMa::simulateResiduals(m1.1, n = 500,  testOutliers(type = 'bootstrap'))
+testOutliers(r, type = 'bootstrap')
+plot(r)
+ 
+#brms 
+#center irec so that it's easier to put priors on the intercept
+dat_pos$log_irec_cent <- dat_pos$log_irec - mean(dat_pos$log_irec)
+dat_pos$irec_cent <- dat_pos$irec - mean(dat_pos$irec)
+
+
+
+
+#resample the data
+
+fit1 <- brm(
+  bf(
+    creel ~ log_irec_cent + s(month, k = 3) + 
+      (log_irec_cent | region), 
+    shape ~ log_irec_cent), 
+  data = dat_pos, 
+  family = negbinomial(),
+  iter = 800, chains = 3, cores = 2
+)
+
+
+
+plot(fit1)
+
+fixef(fit1)
+
+
+yrep<-posterior_predict(fit1, draws = 500)
+ppc_dens_overlay(dat_pos$creel,yrep) +xlim(1,10000)
+ppc_stat_grouped(dat_pos$creel,yrep, group = dat_pos$region, stat = "max")
+
+plot(conditional_smooths(fit1), rug = TRUE, ask = FALSE)
+
+nd <- expand.grid(log_irec_cent = seq(min(dat_pos$log_irec_cent), max(dat_pos$log_irec_cent), length.out = 100),month = unique(dat_pos$month), region = unique(dat_pos$region))
+
+pp1 <- posterior_linpred(fit1, newdata = nd, transform = TRUE, ndraws = 10)
+lu1 <- data.frame(region = unique(dat_pos$region))
+
+x <- tidybayes::add_linpred_draws(nd, fit1, ndraws = 100, transform = TRUE)
+x %>% 
+  ggplot(aes((log_irec_cent+mean(dat_pos$log_irec_cent)), .linpred, group = paste(region, .draw), colour = region)) +
+  geom_line(alpha = 0.2) +
+  geom_point(data = dat_pos, mapping = aes(x = (log_irec_cent+mean(dat_pos$log_irec_cent)), y = creel, colour = region), inherit.aes = FALSE) +
+  facet_wrap(~month, scales = "free_y")
+
+
+conditional_effects(fit1, method="posterior_predict")
+loofit1<-loo(fit1, save_psis = TRUE)
+
+get_variables(fit1)
+
+
+#=============================================================
+
+postdraws<-as_draws_df(fit1)
+postdraws$datasample <- 0
+#resample the data
+for(i in 1:3){
+  dats <- dat_pos[sample(seq_len(nrow(dat_pos)), nrow(dat_pos), replace = TRUE),]
+
+  fit1 <- brm(
+    bf(
+      creel ~ log_irec_cent + s(month, k = 3) + 
+        (log_irec_cent | region), 
+      shape ~ log_irec_cent), 
+    data = dats, 
+    family = negbinomial(),
+    iter = 800, chains = 3, cores = 2
+  )
+
+  #I need to figure out a way of weeding models that did not converge
+
+  pd<-as_draws_df(fit1)
+  pd$datasample <- i
+
+  rbind.fill(postdraws,pd)
+}
+
+
+
+
+
+
+
+
+
+
+
+#Fit when irec is 
+
+fit2 <- brm(
+  bf(creel ~ s(month, k = 3) + (1 | region)), 
+  data = dat_zero, 
+  family = negbinomial(),
+  iter = 600, chains = 2, cores = 2
+)
+
+
+
+
+
+fit2
+
+plot(conditional_smooths(fit2), rug = TRUE, ask = FALSE)
+
+nd <- expand.grid(month = seq(min(dat_zero$month), max(dat_pos$month), length.out = 100), region = unique(dat_zero$region))
+
+pp2 <- posterior_linpred(fit2, newdata = nd, transform = TRUE, ndraws = 10)
+
+
+lu <- data.frame(region = unique(dat_zero$region))
+
+
+x <- tidybayes::add_linpred_draws(nd, fit2, ndraws = 100, transform = TRUE)
+x %>% 
+  ggplot(aes(month, .linpred, group = paste(region, .draw), colour = region)) +
+  geom_line(alpha = 0.2) +
+  geom_point(data = dat_zero, mapping = aes(x = month, y = creel, colour = region), inherit.aes = FALSE) +
+  facet_wrap(~region, scales = "free_y")
+
+
+nd1 <- expand.grid(
+  month = unique(dat_pos$month), 
+  region = unique(dat_pos$region),
+  log_irec_cent = seq(min(dat_pos$log_irec_cent), max(dat_pos$log_irec_cent), length.out = 100)
+)
+nd1$log_irec <- nd1$log_irec_cent + mean(dat_pos$log_irec)
+nd1$irec <- exp(nd1$log_irec)
+
+x1 <- tidybayes::add_linpred_draws(nd1, fit1, ndraws = 100, transform = TRUE)
+x1 %>% 
+  filter(month == unique(dat_pos$month)[1]) %>% 
+  ggplot(aes(irec, .linpred, group = paste(region, .draw), colour = region)) +
+  geom_line(alpha = 0.2) +
+  facet_wrap(~region, scales = "free_y") +
+  scale_x_log10() +
+  scale_y_log10()
+
+x1 <- tidybayes::add_predicted_draws(nd1, fit1, ndraws = 100)
+x1 %>% 
+  filter(month == unique(dat_pos$month)[1]) %>% 
+  ggplot(aes(irec, .prediction, group = paste(region, .draw), colour = region)) +
+  geom_line(alpha = 0.2) +
+  facet_wrap(~region, scales = "free_y")
+
+
 
 #===========================
 #histograms by groupings - of the data that is complete
-datnna<-datxy[!is.na(datxy$CREEL),]
 
 
 #proportion of 0's in iredc
 
 prop0<-function(x){sum(x==0)/length(x)}
 
-
-aggregate(datnna$CREEL,by=list(datnna$MONTH),prop0)
-aggregate(datnna$CREEL,by=list(datnna$LU_GROUPING3),prop0)
-aggregate(datnna$CREEL,by=list(datnna$YEAR),prop0)
-
+aggregate(dat$creel,by=list(dat$month),prop0)
+aggregate(dat$creel,by=list(dat$region),prop0)
+aggregate(dat$creel,by=list(dat$year),prop0)
 
 
-#===========================================
-#plot data by area
-p <- ggplot(datnna,aes(y=CREEL, x=IREC,color=LU_GROUPING3))
-p <- p + geom_point(size=2, alpha=.5)
-p <- p + geom_smooth(method = lm, formula= y~0+x, se     = FALSE, size   = 1, alpha  = .8) # to add regression line
-p <- p + theme_bw(16)+labs( y="CREEL", x="iREC")
-p <- p + scale_color_viridis_d(end = 0.8,option = "C")
-p <- p + theme(legend.position="bottom")
-p
-
-#plot data by month
-p <- ggplot(datnna,aes(y=CREEL, x=IREC,color=as.factor(MONTH)))
-p <- p + geom_point(size=2, alpha=.5)
-p <- p + geom_smooth(method = lm, formula= y~0+x, se     = FALSE, size   = 1, alpha  = .8) # to add regression line
-p <- p + theme_bw(16)+labs( y="CREEL", x="iREC")
-p <- p + scale_color_viridis_d(end = 0.8,option = "B")
-p <- p + theme(legend.position="bottom")
-p
-
-#plot data by year
-p <- ggplot(datnna,aes(y=CREEL, x=IREC,color=as.factor(YEAR)))
-p <- p + geom_point(size=2, alpha=.5)
-p <- p + geom_smooth(method = lm, formula= y~0+x, se     = FALSE, size   = 1, alpha  = .8) # to add regression line
-p <- p + theme_bw(16)+labs( x="CREEL", y="iREC")
-p <- p + scale_color_viridis_d(end = 0.8,option = "B")
-p <- p + theme(legend.position="bottom")
-p
-#=============================
+#===========================
+#data plots
 
 
-
-p <- ggplot(datnna,aes(CREEL))
-p <- p + geom_histogram()
-p <- p + facet_wrap(~LU_GROUPING3, scales="free")
-p <- p + theme_bw(16)
-p <- p + theme(legend.position="bottom")
-p
 
 
 
@@ -185,8 +257,9 @@ fit0 <- brm(formula =  CREEL ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3 ) ,
 
 
 summary(fit0)
+
 #these are not possible because there is only one parameter.
-#pairs(fit1)
+pairs(fit0)
 plot(fit0, ask = FALSE)
 
 #Something is wrong here. I think it has something to do with the log link
@@ -198,7 +271,7 @@ pred0<-predict(fit0)
 
 
 plot(standata(fit0)$Y,pred0[,1])
-#Seems like a bunch of 0's are not 
+#Seems like a bunch of positive vaues are predicted as zeroes 
 dat <- as.data.frame(cbind(Y = standata(fit0)$Y, fitted_values0))
 ggplot(dat) + geom_point(aes(x = Y, y = Estimate))
 
@@ -207,15 +280,29 @@ loofit0<-loo(fit0, save_psis = TRUE)
 
 plot(loofit0)
 
+p <- pp_check(fit0,
+    type = "stat",
+    ndraws = 1000,
+    stat = "mean"
+  )
+
+mcmc_areas(as.matrix(fit0$fit), regex_pars = "r_[^I]", 
+  point_est = "mean", prob = 0.95, prob_outer = 0.99) + 
+ggtitle("Posterior densities with means and 95% intervals") +
+theme_bw() +
+ theme(axis.text = element_text(size = 12), panel.grid = element_blank()) +
+  xlab("Coefficient size")
+
+
 
 #=============
 #Try the poisson model
 #round response to nearest integer
 dats$CREELint<- round(dats$CREEL)
-
+dats$row_number<-as.factor(1:length(dats$CREEL))
 #the poisson model gave Rhat of 3.59! chains did not mix, everything looked terrible.
-#fit1 <- brm(formula =  CREELint ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3 )  , 
-#  data=dats, family="poisson", iter = 3000,chains=3 )
+fit1 <- brm(formula =  CREELint ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3 )  , 
+  data=dats, family="poisson", iter = 3000,chains=3 )
 
 #Same thing happened to the zero inlated poisson. 
 #Try the poisson model with the area hierarchical effect
@@ -278,15 +365,16 @@ ppc_loo_pit_overlay(
 # Error: Sampling from priors is not possible as some parameters have no proper priors. Error occurred for parameter 'b'.
 fit2prior <- brm(formula = bf( CREEL ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3), 
   hu ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3)),
-  data=dats, family=hurdle_lognormal, iter = 2000,chains=3, sample_prior = "only" ,
+  data=dats, family=hurdle_lognormal, iter = 200,chains=6, sample_prior = "only" ,
   prior = c(
-    prior(normal(0, 1000), class = sigma),
-    prior(normal(0, 100), class = b, coef = IREC)
+    prior(normal(0, 10), class = sigma),
+    prior(normal(0, 10), class = sd),
+    prior(normal(0, 10), class = b_hu),
+  prior(normal(0, 10), class = b)
   ))
 
 
 
-summary(fit2prior)
 
 
 fit2 <- brm(formula = bf( CREEL ~ -1 +  IREC + (-1 +  IREC |LU_GROUPING3), 
@@ -316,7 +404,7 @@ dats[which.max(fitted_values[,1]),]
 
 #this plot makes no sense to me:
 conditional_effects(fit2, method="posterior_predict")
-
+#marginal_effects(fit2) #deprecated
 p <- pp_check(fit2,
     type = "stat",
     ndraws = 1000,
@@ -324,11 +412,6 @@ p <- pp_check(fit2,
   )
 
 
-
-plot.brmsMarginalEffects_shades(
-    x = marginal_effects(fit2, re_formula = NA, probs = c(0.025,0.975)),
-    y = marginal_effects(fit2, re_formula = NA, probs = c(0.1,0.9)), 
-    ask = FALSE)
 
 names(fit2$fit)
 fit2$prior
