@@ -1,10 +1,8 @@
 #=======================================================================
 # iREc calibration model fit experimentations
-# Catarina Wor
-# October 2021 
+# Catarina Wor #Norah Brown
+# January 2022
 #=======================================================================
-
-
 
 
 library(ggplot2)
@@ -34,16 +32,14 @@ arealu <- read.csv("data/areaLU.csv")
 #data wrangle
 
 #area program Logistical area table
-
 creel<- creel%>%
       rename(AREA=PFMA)%>%left_join(arealu[,c("AREA","LU_GROUPING3")])%>%
       filter(YEAR>2012)
 
-##A few things we need to do up here: 
-
-# Added in a line here to take out the methods that were diving and angling from shore
+#Norah:Added in a line here to take out the methods that were diving and angling from shore
 irec<- irec %>% filter(METHOD=="Angling from boat")
 
+#Norah: moved this up here
 #this needs to be before the expansion, so we don't have repeated areas
 irec<-irec%>%left_join(arealu[,c("AREA","LU_GROUPING3")])
 
@@ -57,7 +53,6 @@ allobs <- expand.grid(list(LU_GROUPING3=unique(irec$LU_GROUPING3),
   DISPOSITION=unique(irec$DISPOSITION)))
 
 #create zero observations and remove in river fisheries
-
 irecall<- left_join(allobs,irec) %>% filter(AREA != "Area 29 (In River)", YEAR>2012)
 
 irecall$ESTIMATE[is.na(irecall$ESTIMATE)]<-0
