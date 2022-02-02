@@ -27,6 +27,7 @@ library(ruler)
 library(rstatix)
 
 
+# Loading -----------------------------------------------------------------
 
 # irec raw data, comes in three separate sheets for different dates
 #the sheets are in different formats so need to standardize
@@ -34,114 +35,29 @@ irec_raw <- read.csv(here::here("data/chinook responses_sheet1.csv")) %>% as_tib
 irec_raw2 <- read.csv(here::here("data/chinook responses_sheet2.csv"))%>% as_tibble()
 irec_raw3 <- read.csv(here::here("data/chinook responses_sheet3.csv"))%>% as_tibble()
 
-# qc on raw3 and raw 2
-names(irec_raw3) <- tolower(names(irec_raw3))
-names(irec_raw2) <- tolower(names(irec_raw2))
-irec_raw3 <- rename(irec_raw3, licence_id = surveykey)
-irec_raw3$salmon_chinook_us_hatchery_kept<-as.integer(irec_raw3$salmon_chinook_us_hatchery_kept)
-irec_raw3$salmon_chinook_us_hatchery_rele<-as.integer(irec_raw3$salmon_chinook_us_hatchery_rele)
-irec_raw3$salmon_chinook_us_hatchery_rele[is.na(irec_raw3$salmon_chinook_us_hatchery_rele)] <- 0
-irec_raw3$salmon_chinook_us_hatchery_kept[is.na(irec_raw3$salmon_chinook_us_hatchery_kept)] <- 0
 
-irec_raw2$salmon_chinook_us_hatchery_kept<-0
-irec_raw2$salmon_chinook_us_hatchery_rele<-0
-irec_raw2$salmon_chinook_us_wild_kept<-0
-irec_raw2$salmon_chinook_us_wild_rele<-0
-irec_raw2$salmon_chinook_us_unkown_kept<-0
-irec_raw2$salmon_chinook_us_unkown_rele<-0
+# Formatting --------------------------------------------------------------
 
-  
-# can combine these two sheets since they are of the same format
-irec_raw2<-bind_rows(irec_raw2, irec_raw3)
-irec_raw2<- irec_raw2 %>% rename(licence.id = licence_id, juveniles = totaljuveniles, lodge=fishedfromlodge, guided=fishedwithguide)
-
-
-# Standardizing format
-irec_raw2<- irec_raw2 %>% mutate(area = case_when(
-                                area == "A001" ~ "Area 1",
-                                area == "A002E" ~ "Area 2 East", 
-                                area == "A002W" ~ "Area 2 West",
-                                area == "A003" ~ "Area 3", 
-                                area == "A004" ~ "Area 4",
-                                area == "A005" ~ "Area 5", 
-                                area == "A006" ~ "Area 6",
-                                area == "A007" ~ "Area 7", 
-                                area == "A008" ~ "Area 8",
-                                area == "A009" ~ "Area 9", 
-                                area == "A010" ~ "Area 10",
-                                area == "A011" ~ "Area 11", 
-                                area == "A012" ~ "Area 12", 
-                                area == "A013" ~ "Area 13", 
-                                area == "A014" ~ "Area 14", 
-                                area == "A015" ~ "Area 15", 
-                                area == "A016" ~ "Area 16", 
-                                area == "A017" ~ "Area 17", 
-                                area == "A018" ~ "Area 18", 
-                                area == "A019MP" ~ "Area 19 Main Portion", 
-                                area == "A019SI" ~ "Area 19 Saanich Inlet only", 
-                                area == "A019" ~ "Area 19", 
-                                area == "A020" ~ "Area 20", 
-                                area == "A020E" ~ "Area 20 (East)", 
-                                area == "A020W" ~ "Area 20 (West)", 
-                                area == "A021" ~ "Area 21", 
-                                area == "A022" ~ "Area 22", 
-                                area == "A023AI" ~ "Area 23 Alberni Inlet", 
-                                area == "A023BS" |  str_detect(area, "a023bs") ~ "Area 23 Barkley Sound", 
-                                area == "A023" ~ "Area 23", 
-                                area == "A024" ~ "Area 24", 
-                                area == "A025" ~ "Area 25", 
-                                area == "A026" ~ "Area 26", 
-                                area == "A027" ~ "Area 27", 
-                                area == "A028" ~ "Area 28", 
-                                area == "A029GS" ~ "Area 29 Georgia Strait", 
-                                area == "A029IR" ~ "Area 29 In River", 
-                                area == "A101" ~ "Area 101", 
-                                area == "A102" ~ "Area 102", 
-                                area == "A103" ~ "Area 103", 
-                                area == "A104" ~ "Area 104",
-                                area == "A105" ~ "Area 105", 
-                                area == "A106" ~ "Area 106",
-                                area == "A107" ~ "Area 107", 
-                                area == "A108" ~ "Area 108",
-                                area == "A109" ~ "Area 109", 
-                                area == "A110" ~ "Area 110",
-                                area == "A111" ~ "Area 111",
-                                area == "A121" ~ "Area 121",                                
-                                area == "A123" ~ "Area 123",
-                                area == "A124" ~ "Area 124",
-                                area == "A125" ~ "Area 125",
-                                area == "A126" ~ "Area 126",
-                                area == "A127" ~ "Area 127",
-                                area == "A130" ~ "Area 130",
-                                area == "A142" ~ "Area 142",
-                                TRUE ~ as.character(area))) %>% 
-                     mutate(method = case_when(method=="angleboat" ~ "Angling from boat", 
-                                               method=="angleshore" ~ "Angling from shore",
-                                               method== "dive" ~ "Dive-based or other",
-                                               TRUE ~ as.character(method)))
-
-irec_raw<- irec_raw %>% mutate(Month = case_when(
-                               Month == "January" ~ "1",
-                               Month == "February" ~ "2",
-                               Month == "March" ~ "3",
-                               Month == "April" ~ "4",
-                               Month == "May" ~ "5",
-                               Month == "June" ~ "6",
-                               Month == "july" |Month == "July" ~ "7",
-                               Month == "August" ~ "8",
-                               Month == "september" |Month == "September" ~ "9",
-                               Month == "October" ~ "10",
-                               Month == "November" ~ "11",
-                               Month == "December" ~ "12",
-                               TRUE ~ as.character(Month)))
-
-
-
-# Qc irec raw sheet 1
+# formatting raw 1
 names(irec_raw) <- tolower(names(irec_raw))
-irec_raw$day<-row.names(irec_raw)
+irec_raw<- irec_raw %>%  mutate_at(c("lodge", "guided", "month"), function(x) tolower(as.character(x)))
+irec_raw<- irec_raw %>% mutate(month = case_when(
+                                       month == "january" ~ "1",
+                                       month == "february" ~ "2",
+                                       month == "march" ~ "3",
+                                       month == "april" ~ "4",
+                                       month == "may" ~ "5",
+                                       month == "june" ~ "6",
+                                       month == "july"  ~ "7",
+                                       month == "august" ~ "8",
+                                       month == "september" ~ "9",
+                                       month == "october" ~ "10",
+                                       month == "november" ~ "11",
+                                       month == "december" ~ "12",
+                                       TRUE ~ as.character(month)))
 irec_raw$month<-as.integer(irec_raw$month)
 irec_raw$licence.id<-as.character(irec_raw$licence.id)
+irec_raw$day<-row.names(irec_raw)
 irec_raw$day<-as.integer(irec_raw$day)
 irec_raw$salmon_chinook_us_hatchery_kept<-0
 irec_raw$salmon_chinook_us_hatchery_rele<-0
@@ -150,11 +66,99 @@ irec_raw$salmon_chinook_us_wild_rele<-0
 irec_raw$salmon_chinook_us_unkown_kept<-0
 irec_raw$salmon_chinook_us_unkown_rele<-0
 
-# combining sheets post format changes, so they are all comparable
-irec_raw_combined <-bind_rows(irec_raw, irec_raw2)
-irec_raw_combined
 
-# Incorporating Juveniles
+# formatting raw 2 and 3
+names(irec_raw3) <- tolower(names(irec_raw3))
+names(irec_raw2) <- tolower(names(irec_raw2))
+irec_raw2<- irec_raw2 %>%  mutate_if(is.character, function(x) tolower(as.character(x)))
+irec_raw3<- irec_raw3 %>%  mutate_if(is.character, function(x) tolower(as.character(x)))
+irec_raw3 <- rename(irec_raw3, licence_id = surveykey)
+irec_raw3$salmon_chinook_us_hatchery_kept<-as.integer(irec_raw3$salmon_chinook_us_hatchery_kept)
+irec_raw3$salmon_chinook_us_hatchery_rele<-as.integer(irec_raw3$salmon_chinook_us_hatchery_rele)
+irec_raw3$salmon_chinook_us_hatchery_rele[is.na(irec_raw3$salmon_chinook_us_hatchery_rele)] <- 0
+irec_raw3$salmon_chinook_us_hatchery_kept[is.na(irec_raw3$salmon_chinook_us_hatchery_kept)] <- 0
+irec_raw2$salmon_chinook_us_hatchery_kept<-0
+irec_raw2$salmon_chinook_us_hatchery_rele<-0
+irec_raw2$salmon_chinook_us_wild_kept<-0
+irec_raw2$salmon_chinook_us_wild_rele<-0
+irec_raw2$salmon_chinook_us_unkown_kept<-0
+irec_raw2$salmon_chinook_us_unkown_rele<-0
+
+  
+# Combining raw 2 and raw 3 - now same format
+irec_raw23<-bind_rows(irec_raw2, irec_raw3)
+irec_raw23<- irec_raw23 %>% rename(licence.id = licence_id, juveniles = totaljuveniles, lodge=fishedfromlodge, guided=fishedwithguide)
+
+# Standardizing format
+irec_raw23<- irec_raw23 %>% mutate(area = case_when(
+                                area == "a001" ~ "Area 1",
+                                area == "a002e" ~ "Area 2 East", 
+                                area == "a002w" ~ "Area 2 West",
+                                area == "a003" ~ "Area 3", 
+                                area == "a004" ~ "Area 4",
+                                area == "a005" ~ "Area 5", 
+                                area == "a006" ~ "Area 6",
+                                area == "a007" ~ "Area 7", 
+                                area == "a008" ~ "Area 8",
+                                area == "a009" ~ "Area 9", 
+                                area == "a010" ~ "Area 10",
+                                area == "a011" ~ "Area 11", 
+                                area == "a012" ~ "Area 12", 
+                                area == "a013" ~ "Area 13", 
+                                area == "a014" ~ "Area 14", 
+                                area == "a015" ~ "Area 15", 
+                                area == "a016" ~ "Area 16", 
+                                area == "a017" ~ "Area 17", 
+                                area == "a018" ~ "Area 18", 
+                                area == "a019mp" ~ "Area 19 Main Portion", 
+                                area == "a019si" ~ "Area 19 Saanich Inlet only", 
+                                area == "a019" ~ "Area 19", 
+                                area == "a020" ~ "Area 20", 
+                                area == "a020e" ~ "Area 20 (East)", 
+                                area == "a020w" ~ "Area 20 (West)", 
+                                area == "a021" ~ "Area 21", 
+                                area == "a022" ~ "Area 22", 
+                                area == "a023ai" ~ "Area 23 Alberni Inlet", 
+                                area == "a023bs" |  str_detect(area, "a023bs") ~ "Area 23 Barkley Sound", 
+                                area == "a023" ~ "Area 23", 
+                                area == "a024" ~ "Area 24", 
+                                area == "a025" ~ "Area 25", 
+                                area == "a026" ~ "Area 26", 
+                                area == "a027" ~ "Area 27", 
+                                area == "a028" ~ "Area 28", 
+                                area == "a029gs" ~ "Area 29 Georgia Strait", 
+                                area == "a029ir" ~ "Area 29 In River", 
+                                area == "a101" ~ "Area 101", 
+                                area == "a102" ~ "Area 102", 
+                                area == "a103" ~ "Area 103", 
+                                area == "a104" ~ "Area 104",
+                                area == "a105" ~ "Area 105", 
+                                area == "a106" ~ "Area 106",
+                                area == "a107" ~ "Area 107", 
+                                area == "a108" ~ "Area 108",
+                                area == "a109" ~ "Area 109", 
+                                area == "a110" ~ "Area 110",
+                                area == "a111" ~ "Area 111",
+                                area == "a121" ~ "Area 121",                                
+                                area == "a123" ~ "Area 123",
+                                area == "a124" ~ "Area 124",
+                                area == "a125" ~ "Area 125",
+                                area == "a126" ~ "Area 126",
+                                area == "a127" ~ "Area 127",
+                                area == "a130" ~ "Area 130",
+                                area == "a142" ~ "Area 142",
+                                TRUE ~ as.character(area))) %>% 
+                     mutate(method = case_when(method=="angleboat" ~ "Angling from boat", 
+                                               method=="angleshore" ~ "Angling from shore",
+                                               method== "dive" ~ "Dive-based or other",
+                                               TRUE ~ as.character(method)))
+
+
+# combining sheets post format changes, so they are all comparable
+irec_raw_combined <-bind_rows(irec_raw, irec_raw23)
+irec_raw_combined<-irec_raw_combined %>% mutate_if(is.numeric, ~replace(., is.na(.), 0))
+
+# Incorporating Juveniles into accounting, make catches per person
 irec_raw_combined$adult<-1
 irec_raw_combined$num_people<-irec_raw_combined$adult+irec_raw_combined$juveniles
 irec_raw_combined$total_released_pp<- (irec_raw_combined$salmon_chinook_subl_rele +  
@@ -189,7 +193,8 @@ irec_raw_combined$total_caught_pp<- (irec_raw_combined$salmon_chinook_subl_rele 
                                      irec_raw_combined$salmon_chinook_us_unkown_kept)/
                                      irec_raw_combined$num_people
 
-# Plotting 
+# Plotting ----------------------------------------------------------------
+
 p <- ggplot(irec_raw_combined,aes(y=total.chinook.caught, x=month, colour=as.factor(year)))
 p <- p + geom_boxplot()+  facet_wrap(~area, scales="free")
 p
@@ -225,8 +230,6 @@ released_plot_filt
 ggsave("Plots/released_plot_filt.png", released_plot_filt)
 
 
-ggsave()
-
 p <- ggplot(irec_raw_combined,aes(y=total_released_pp, x=as.factor(month), colour=as.factor(year)))
 p <- p + geom_point()+  facet_wrap(~area, scales="free")
 p
@@ -244,11 +247,50 @@ p <- ggplot(irec_raw_summed_all %>% filter(disposition=="Released"),aes(y=respon
 p <- p + geom_boxplot()+  facet_wrap(~area, scales="free")
 p
 
-# QC
-kept_high<-irec_raw_combined %>% filter(total_kept_pp>4)  %>% arrange(desc(total_kept_pp))
-released_high<-irec_raw_combined %>% filter(total_released_pp>20)  %>% arrange(desc(total_released_pp))
-total_high<-irec_raw_combined %>% filter(total_caught_pp>20)  %>% arrange(desc(total_caught_pp))
+# Qc report ---------------------------------------------------------------
+#useful functions
+merge.all <- function(x, y) {
+  merge(x, y, all=TRUE, by="id_ignore")
+}
 
+# Issue 1 - Kept
+kept_high<-irec_raw_combined %>% filter(total_kept_pp>4)  %>% arrange(desc(total_kept_pp))
+# Issue 1.1 Kept investigations
+kept_high_area<- kept_high %>% group_by(area) %>% summarise(n_area= n()) %>% arrange(desc(n_area)) %>% mutate(id_ignore = row_number())
+kept_high_year<- kept_high %>% group_by(year) %>% summarise(n_year= n()) %>% arrange(desc(n_year)) %>% mutate(id_ignore = row_number())
+kept_high_guide<- kept_high %>% group_by(guided) %>% summarise(n_guide= n()) %>% arrange(desc(n_guide)) %>% mutate(id_ignore = row_number())
+kept_high_lodge<- kept_high %>% group_by(lodge) %>% summarise(n_lodge= n()) %>% arrange(desc(n_lodge)) %>% mutate(id_ignore = row_number())
+kept_high_juv<- kept_high %>% group_by(juveniles) %>% summarise(n_juv= n()) %>% arrange(desc(n_juv)) %>% mutate(id_ignore = row_number())
+DataList_kept<-list(kept_high_area, kept_high_year,kept_high_guide, kept_high_lodge, kept_high_juv)
+kept_investigate <- Reduce(merge.all, DataList_kept)
+kept_investigate <-kept_investigate %>% select(-id_ignore) %>% as_tibble()
+
+# Issue 2 - Released
+released_high<-irec_raw_combined %>% filter(total_released_pp>20)  %>% arrange(desc(total_released_pp))
+# Issue 2.1 - released investigations
+released_high_area<- released_high %>% group_by(area) %>% summarise(n_area= n()) %>% arrange(desc(n_area)) %>% mutate(id_ignore = row_number())
+released_high_year<- released_high %>% group_by(year) %>% summarise(n_year= n()) %>% arrange(desc(n_year)) %>% mutate(id_ignore = row_number())
+released_high_guide<- released_high %>% group_by(guided) %>% summarise(n_guide= n()) %>% arrange(desc(n_guide)) %>% mutate(id_ignore = row_number())
+released_high_lodge<- released_high %>% group_by(lodge) %>% summarise(n_lodge= n()) %>% arrange(desc(n_lodge)) %>% mutate(id_ignore = row_number())
+released_high_juv<- released_high %>% group_by(juveniles) %>% summarise(n_juv= n()) %>% arrange(desc(n_juv)) %>% mutate(id_ignore = row_number())
+DataList_released<-list(released_high_area, released_high_year,released_high_guide, released_high_lodge, released_high_juv)
+released_investigate <- Reduce(merge.all, DataList_released)
+released_investigate <-released_investigate %>% select(-id_ignore) %>% as_tibble()
+
+# Issue 3 - Total caught (kept + released)
+total_high<-irec_raw_combined %>% filter(total_caught_pp>20)  %>% arrange(desc(total_caught_pp))
+# Issue 3.1 - total caught investigations
+total_high_area<- total_high %>% group_by(area) %>% summarise(n_area= n()) %>% arrange(desc(n_area)) %>% mutate(id_ignore = row_number())
+total_high_year<- total_high %>% group_by(year) %>% summarise(n_year= n()) %>% arrange(desc(n_year)) %>% mutate(id_ignore = row_number())
+total_high_guide<- total_high %>% group_by(guided) %>% summarise(n_guide= n()) %>% arrange(desc(n_guide)) %>% mutate(id_ignore = row_number())
+total_high_lodge<- total_high %>% group_by(lodge) %>% summarise(n_lodge= n()) %>% arrange(desc(n_lodge)) %>% mutate(id_ignore = row_number())
+total_high_juv<- total_high %>% group_by(juveniles) %>% summarise(n_juv= n()) %>% arrange(desc(n_juv)) %>% mutate(id_ignore = row_number())
+DataList_total<-list(total_high_area, total_high_year,total_high_guide, total_high_lodge, total_high_juv)
+total_investigate <- Reduce(merge.all, DataList_total)
+total_investigate <-total_investigate %>% select(-id_ignore) %>% as_tibble()
+
+
+# Issue 4 - Licences flagged
 irec_liscences_flag<- irec_raw_combined %>% mutate(kept_high= case_when(total_kept_pp>4 ~ 1, TRUE ~ 0), 
                                                  released_high = case_when(total_released_pp>20 ~1, TRUE ~ 0), 
                                                  total_high = case_when(total_caught_pp>20 ~ 1, TRUE ~0), 
@@ -259,10 +301,8 @@ irec_liscences_flag<- irec_raw_combined %>% mutate(kept_high= case_when(total_ke
                                                  summarise_if(is.numeric, sum) %>%       
                                                  filter(flag_count > 0) %>%       
                                                  arrange(desc(flag_count)) 
- 
-
-length(unique(irec_raw_combined$licence.id))
-hist(irec_liscences_flag$flag_day)
+ # length(unique(irec_raw_combined$licence.id))
+# hist(irec_liscences_flag$flag_day)
 
 #Summary table
 explore_summary_irec <- data.frame(Issue_ID=character(), Issue=character(), Count=integer(),
@@ -271,19 +311,32 @@ explore_summary_irec <- data.frame(Issue_ID=character(), Issue=character(), Coun
 
 explore_summary_irec <- explore_summary_irec  %>% 
   add_row(Issue_ID="1", Issue="High # Kept", Count=nrow(kept_high), Definition="Number of total chinook kept per person is over 4") %>% 
+  add_row(Issue_ID="1.1", Issue="High # Kept summaries", Count=nrow(kept_high), Definition="Number of total chinook kept per person is over 4, summarized by area, year, guide, lodge, and juveniles") %>% 
   add_row(Issue_ID="2", Issue="High # Released", Count=nrow(released_high), Definition="Number of total chinook released per person is over 20") %>% 
+  add_row(Issue_ID="2.1", Issue="High # Released summaries", Count=nrow(kept_high), Definition="Number of total chinook released per person is over 20, summarized by area, year, guide, lodge, and juveniles") %>% 
   add_row(Issue_ID="3", Issue="High # Caught", Count=nrow(total_high), Definition="Number of total chinook caught per person is over 20") %>% 
+  add_row(Issue_ID="3.1", Issue="High # Caught summaries", Count=nrow(total_high), Definition="Number of total chinook caught per person is over 20, summarized by area, year, guide, lodge, and juveniles") %>% 
   add_row(Issue_ID="4", Issue="Licences w flags", Count=nrow(irec_liscences_flag), Definition="Licence.id has at least one of: high # kept, high # released or high # caught")
 
 sheet_list_irec<-list(Summary=explore_summary_irec,
-                 "1 - High_Kept"=kept_high, 
+                 "1 - High_Kept"=kept_high,
+                 "1.1 - High_Kept_sum"=kept_investigate,
                  "2 - High_Released"=released_high,
+                 "2.1 - High_Released_sum"=released_investigate,
                  "3 - High_Caught" = total_high,
+                 "3.1 - High_Caught_sum" = total_investigate,
                  "4 - Licence_flags" = irec_liscences_flag                               
                  )
 
 writexl::write_xlsx(sheet_list_irec, path="irec_QC.xlsx")
 
+
+# Extra code for next steps -----------------------------------------------
+
+
+
+
+#
 # quantile(irec_raw_combined$total_kept_pp, na.rm=TRUE)
 
 ## problem is outlier analysis is saying everything is an outlier.... 
