@@ -1,3 +1,66 @@
+
+# Irec plotting stuff and irec to creel stuff
+# source
+
+source(here::here("R/format-data-NB.R"))
+
+# are there PFMA levels in creel not in irec? 
+creel_levels<-levels(as.factor(creel$PFMA))
+irec_levels<-levels(as.factor(irec$AREA))
+
+creel_levels  %in% irec_levels
+setdiff(creel_levels, irec_levels)
+
+
+irec_levels %in% creel_levels
+
+set.diff<-setdiff(irec_levels,creel_levels)
+length(setdiff(irec_levels,creel_levels))
+
+arealu %>% filter(AREA %in% set.diff) %>% arrange(LU_GROUPING3)
+
+# survey
+creel_survey<- creel %>% mutate(SURVEY = case_when(
+  Include..20. == "Y" ~ 2,
+  Include..15. == "Y" ~ 3,
+  TRUE ~ 4
+)) %>% group_by(PFMA, YEAR, MONTH, TYPE, SURVEY) %>% 
+  summarise(ESTIMATE = sum(ESTIMATE),SURVEY = mean(SURVEY)) 
+
+
+# irec data
+irec <- read.csv(here::here("data/iRecchinook_2012_2021.csv"))
+irec<-irec %>% as_tibble()
+
+p <- ggplot(irec %>% filter(AREA=="Area 2"),aes(x=ESTIMATE))
+p <- p + stat_bin(colour = "gray", alpha = 0.5, position = "identity", aes(y = ..density..)) + geom_density(fill = NA, size=1)
+p <- p + theme_bw(16)
+p <- p + theme(legend.position="bottom")
+p
+
+p <- ggplot(irec,aes(y=ESTIMATE, x=MONTH, colour=as.factor(YEAR), shape=DISPOSITION))
+p <- p + geom_point()+  facet_wrap(~AREA, scales="free")
+p
+
+
+p <- ggplot(irec ,aes(x=ESTIMATE))
+p <- p + stat_bin(colour = "gray", alpha = 0.5, position = "identity", aes(y = ..density..)) + geom_density(fill = NA, size=1)
+p <- p + theme_bw(16)+xlim(1000,60000)
+p <- p + theme(legend.position="bottom")
+p
+
+p <- ggplot(irec,aes(y=ESTIMATE, x=AREA, colour=DISPOSITION))
+p <- p + geom_point() + coord_flip()
+p
+
+ireccc
+p <- ggplot(ireccc,aes(y=IREC, x=AREA, colour=DISPOSITION))
+p <- p + geom_point() + coord_flip()
+p
+
+
+
+
 # outlier stuff
 
 # outlier by zscores
