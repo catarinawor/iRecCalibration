@@ -65,6 +65,67 @@ p <- p + geom_point() + coord_flip()
 p
 
 
+# Comparing irec raw to irec estimated:
+irec_raw_summed<-irec_raw_combined %>% filter(method == "Angling from boat") %>% group_by(year, month, area) %>% 
+  summarise(Kept = sum(total_kept), 
+            Released = sum(total_released)) 
+
+
+irec_raw_summed<-irec_raw_summed %>% pivot_longer(c(Kept, Released), names_to="disposition", values_to="response")
+
+
+irec_raw_summed <- irec_raw_summed %>% mutate(area = case_when(
+  area == "Area 19 Main Portion" ~ "Area 19 (JDF)", 
+  area == "Area 19 Saanich Inlet only" ~ "Area 19 (GS)", 
+  area == "Area 23 Alberni Inlet" ~ "Area 23 (Alberni Canal)", 
+  area == "Area 23 Barkley Sound" ~ "Area 23 (Barkley)", 
+  area == "Area 2 East" ~ "Area 2E", 
+  area == "Area 2 West" ~ "Area 2W", 
+  area == "Area 29 Georgia Strait" ~ "Area 29 (Marine)", 
+  area == "Area 29 In River" ~ "Area 29 (In River)", 
+  TRUE ~ as.character(area)))
+
+###need to expand the irec_raw_summed to zeros
+allobs_raw <- expand.grid(list(
+  area = unique(irec_raw_summed$area),
+  year = unique(irec_raw_summed$year),
+  month = unique(irec_raw_summed$month),
+  disposition = unique(irec_raw_summed$disposition)
+))
+
+#create zero observations, with 0 variance
+irec_raw_summed_all <- left_join(allobs_raw, irec_raw_summed)
+irec_raw_summed_all$response[is.na(irec_raw_summed_all$response)] <- 0
+irec_raw_summed_all<- as_tibble(irec_raw_summed_all)
+irec_raw_summed_all
+
+#ireccc - this is the expanded one with all the zeros - make sure to include 2012
+names(ireccc) <- tolower(names(ireccc))
+irec_calculated_summed<-ireccc %>% select (- lu_grouping3) %>% group_by(year, month, area, disposition) %>% 
+  summarise(estimate = sum(irec), estimate_var = sum(sdirec)) 
+irec_calculated_summed
+# Combine the two expanded ones
+irec_compare<-merge(irec_calculated_summed, irec_raw_summed_all, all=TRUE) %>% as_tibble()
+
+p <- ggplot(irec_compare) +
+  geom_point(aes(x = estimate, y = total.chinook.caught, color=as.factor(year)), size = 2, alpha = .5) +
+  theme_bw(16)+
+  scale_color_viridis_d(end = 0.8, option = "C") +
+  geom_abline(slope = 1, intercept = 0) +
+  theme(legend.position = "bottom")
+p
+
+
+p <- ggplot(irec_compare ,aes(y=response, x=estimate,fill=as.factor(year), color=as.factor(year), shape=disposition, linetype=disposition))
+p <- p + geom_point(size=2, alpha=.5)
+p <- p + geom_smooth(method = lm, formula= y~x,  size = 2, alpha  = .2) # to add regression line
+p <- p + theme_bw(16)+labs( y="irec response", x="irec estimate expanded")
+p <- p + scale_color_viridis_d(end = 0.8,option = "B")+ scale_fill_viridis_d(end = 0.8,option = "B")
+p <- p + theme(legend.position="bottom")
+p
+
+
+
 # Plotting kept and releases ----------------------------------------------
 library(ggh4x)
 library(patchwork)
@@ -247,6 +308,91 @@ irec_kept_outliers<-irec_raw_combined %>% filter(IsOutlier(total_kept_pp))
 irec_released_outliers<-irec_raw_combined %>% group_by(month, area, method) %>% filter(IsOutlier(total_released_pp)== "TRUE") 
 
 View(irec_released_outliers)
+
+# Extra code for next steps -----------------------------------------------
+
+
+
+
+#
+# quantile(irec_raw_combined$total_kept_pp, na.rm=TRUE)
+
+## problem is outlier analysis is saying everything is an outlier.... 
+#might just be easier to say over this amount kept etc... 
+
+
+
+# Is extreme?
+IsExtreme <- function(data) {
+  lowerq = quantile(data, na.rm = TRUE)[2]
+  upperq = quantile(data, na.rm = TRUE)[4]
+  iqr = upperq - lowerq 
+  threshold_upper = (iqr * 1.5) + upperq
+  # threshold_lower = lowerq - (iqr * 1.5)
+  data > threshold_upper 
+}
+
+
+### find the outliers https://www.r-bloggers.com/2017/12/combined-outlier-detection-with-dplyr-and-ruler/
+IsOutlier <- function(data) {
+  lowerq = quantile(data, na.rm = TRUE)[2]
+  upperq = quantile(data, na.rm = TRUE)[4]
+  iqr = upperq - lowerq 
+  threshold_upper = (iqr * 1.5) + upperq
+  # threshold_lower = lowerq - (iqr * 1.5)
+  data > threshold_upper 
+}
+
+# took out | data < threshold lower
+
+# outlier by zscores
+isnt_out_z <- function(x, thres = 3, na.rm = TRUE) {
+  abs(x - mean(x, na.rm = na.rm)) <= thres * sd(x, na.rm = na.rm)
+}
+
+#outlier by median absolute deviation 
+isnt_out_mad <- function(x, thres = 3, na.rm = TRUE) {
+  abs(x - median(x, na.rm = na.rm)) <= thres * mad(x, na.rm = na.rm)
+}
+
+# tukey
+isnt_out_tukey <- function(x, k = 1.5, na.rm = TRUE) {
+  quar <- quantile(x, probs = c(0.25, 0.75), na.rm = na.rm)
+  iqr <- diff(quar)
+  
+  (quar[1] - k * iqr <= x) 
+  # & (x <= quar[2] + k * iqr)
+}
+
+isnt_out_funs <- funs(
+  z = isnt_out_z,
+  mad = isnt_out_mad,
+  tukey = isnt_out_tukey
+)
+
+# might need tot ake out zeros for this to work.... 
+# this gives you 5000 days
+irec_outliers<-irec_raw_combined %>% select(licence.id, year, area, month, method, total_released_pp, total_kept_pp) %>% 
+  group_by(year, area, month, method) %>% 
+  mutate_if(is.numeric, isnt_out_funs)
+
+View(irec_outliers)
+#Explorations
+irec_kept_outliers<-irec_raw_combined %>% filter(identify_outliers(total_kept_pp))
+irec_released_outliers<-irec_raw_combined  %>% filter(IsOutlier(total_released_pp)== "TRUE") 
+
+
+irec_raw_combined  %>% anomalize(total_kept_pp) %>% filter(anomaly=="yes")
+
+View(irec_released_outliers)
+
+# identify_outliers() from the rstatix package is good, also have is.extreme
+irec_kept_outliers<-irec_raw_combined %>%  filter(total_kept_pp>1) %>% group_by(year, month, area, method) %>%  filter(is_extreme(total_kept_pp))
+irec_released_outliers<-irec_raw_combined %>%  filter(total_released_pp>1) %>% group_by(year, month, area, method) %>%  filter(is_extreme(total_released_pp))
+
+
+
+View(irec_kept_outliers)
 
 
 # Plotting layout ---------------------------------------------------------
