@@ -169,6 +169,17 @@ irec_raw_combined$total_released_pp<- (irec_raw_combined$salmon_chinook_subl_rel
                                        irec_raw_combined$salmon_chinook_us_wild_rele +
                                        irec_raw_combined$salmon_chinook_us_unkown_rele)/
                                        irec_raw_combined$num_people
+# doesn't include unknown
+irec_raw_combined$legal_released_pp<- (  irec_raw_combined$salmon_chinook_hatch_rele + 
+                                         irec_raw_combined$salmon_chinook_wild_rele + 
+                                         irec_raw_combined$salmon_chinook_us_hatchery_rele + 
+                                         irec_raw_combined$salmon_chinook_us_wild_rele+
+                                          irec_raw_combined$salmon_chinook_us_unkown_rele +
+                                         irec_raw_combined$salmon_chinook_unk_rele)/
+                                         irec_raw_combined$num_people
+# doesn't include unknown
+irec_raw_combined$sublegal_released_pp<- (irec_raw_combined$salmon_chinook_subl_rele)/
+                                         irec_raw_combined$num_people
 
 irec_raw_combined$total_kept_pp<- (irec_raw_combined$salmon_chinook_hatch_kept + 
                                    irec_raw_combined$salmon_chinook_wild_kept + 
@@ -192,63 +203,94 @@ irec_raw_combined$total_caught_pp<- (irec_raw_combined$salmon_chinook_subl_rele 
                                      irec_raw_combined$salmon_chinook_us_wild_kept +
                                      irec_raw_combined$salmon_chinook_us_unkown_kept)/
                                      irec_raw_combined$num_people
+cbc<-c("Area 10", "Area 106","Area 107", "Area 108", "Area 109", "Area 110", "Area 6", "Area 7", "Area 8", "Area 9")
+nbc<-c("Area 2","Area 1", "Area 101", "Area 102", "Area 103", "Area 104", "Area 105", "Area 130", "Area 142", "Area 2 East", "Area 2 West", "Area 3", "Area 4", "Area 5")
+gst<-c("Area 13", "Area 14", "Area 15", "Area 16", "Area 17", "Area 18", "Area 19", "Area 19 Saanich Inlet only", "Area 28", "Area 29", "Area 29 Georgia Strait", "Area 29 In River") 
+jst<-c("Area 11", "Area 111", "Area 12")
+wcvi<-c("Area 121", "Area 123", "Area 124", "Area 125", "Area 126", "Area 127", "Area 22","Area 21",  "Area 23 Barkley Sound",  "Area 23 Alberni Inlet",  "Area 23", "Area 24", "Area 25", "Area 26", "Area 27")
+jdf<-c("Area 19", "Area 19 Main Portion", "Area 20", "Area 20 (East)", "Area 20 (West)")
+
+irec_raw_combined<- irec_raw_combined %>% 
+                    mutate(region = case_when(
+                    area %in% cbc~ "Central BC", 
+                    area %in% nbc~ "Northern BC",                               
+                    area %in% gst~ "Georgia Strait",
+                    area %in% jst~ "Johnstone Strait",
+                    area %in% wcvi ~ "West Coast Vancouver Island",
+                    area %in% jdf~ "Juan de Fuca",
+                    TRUE ~ "other"
+                    ))
+irec_raw_combined$region<- factor(irec_raw_combined$region, levels = c("West Coast Vancouver Island","Johnstone Strait", "Georgia Strait", "Juan de Fuca", "Central BC" , "Northern BC"), ordered = TRUE)
 
 # Plotting ----------------------------------------------------------------
 
-p <- ggplot(irec_raw_combined,aes(y=total.chinook.caught, x=month, colour=as.factor(year)))
-p <- p + geom_boxplot()+  facet_wrap(~area, scales="free")
-p
- 
+# Looped plots
+irec_raw_combined$year<-as.factor(irec_raw_combined$year)
+irec_raw_combined$month<-as.factor(irec_raw_combined$month)
 
-problem_areas<-irec_raw_combined %>% filter(total_kept_pp>4) %>% distinct(area)
-problem_areas <-as.list(problem_areas$area)
+areas = unique(irec_raw_combined$area)
+area_plots_kept = list()
+for(area_ in areas) {
+  area_plots_kept[[area_]] = ggplot(irec_raw_combined %>% filter(area == area_), aes(y=total_kept_pp,x=month, colour=year)) + 
+    ggtitle(irec_raw_combined$area[irec_raw_combined$area == area_])+ theme_classic()+
+    xlab("Month") + ylab("Chinook kept per person")+ scale_color_viridis_d(end = 0.8, option = "C", drop=FALSE)+ 
+    geom_point()+ geom_hline(yintercept = 4) + theme(axis.title = element_text(size = 8))+
+    theme(plot.title = element_text(size=8))
+  
+}
 
-problem_areas_rele<-irec_raw_combined %>% filter(total_released_pp>20) %>% distinct(area)
-problem_areas_rele <-as.list(problem_areas_rele$area)
+ap_kept_cbc<-area_plots_kept[cbc]
+ap_kept_nbc<-area_plots_kept[nbc]
+ap_kept_gst<-area_plots_kept[gst]
+ap_kept_jst<-area_plots_kept[jst]
+ap_kept_wcvi<-area_plots_kept[wcvi]
+ap_kept_jdf<-area_plots_kept[jdf]
 
-kept_plot <- ggplot(irec_raw_combined,aes(y=total_kept_pp, x=as.factor(month), colour=as.factor(year)))
-kept_plot <- kept_plot + geom_point()+ geom_hline(yintercept = 4)+ facet_wrap(~area, scales="free")
-kept_plot
-ggsave("Plots/kept_plot.png", kept_plot)
+p1<-wrap_plots(ap_kept_wcvi, ncol=5) +  plot_annotation(title = 'West Coast Vancouver Island')+ plot_layout(guides = 'collect') 
+ggsave("Plots/kept_plot_wcvi.png", p1)
 
-# just zoom in on the area that contain a >4 value
-kept_plot_filt <- ggplot(irec_raw_combined %>% filter(area %in% problem_areas),aes(y=total_kept_pp, x=as.factor(month), colour=as.factor(year)))
-kept_plot_filt <- kept_plot_filt + geom_point()+ geom_hline(yintercept = 4)+ facet_wrap(~area, scales="free")
-kept_plot_filt
-ggsave("Plots/kept_plot_filt.png", kept_plot_filt)
+p2<-wrap_plots(c(ap_kept_jst, ap_kept_gst,ap_kept_jdf), ncol=5) +  plot_annotation(title = 'Johnstone Strait & Georgia Strait & Juan de Fuca')+ plot_layout(guides = 'collect') 
+ggsave("Plots/kept_plot_jst_gst.png", p2)
 
+p3<-wrap_plots(ap_kept_cbc, ncol=5) + plot_annotation(title= 'Central BC')+ plot_layout(guides = 'collect') 
+ggsave("Plots/kept_plot_cbc.png", p3)
 
-released_plot <- ggplot(irec_raw_combined,aes(y=total_released_pp, x=as.factor(month), colour=as.factor(year)))
-released_plot <- released_plot + geom_point()+ geom_hline(yintercept = 20)+ facet_wrap(~area, scales="free")
-released_plot
-ggsave("Plots/released_plot.png", released_plot)
-
-
-released_plot_filt <- ggplot(irec_raw_combined %>% filter(area %in% problem_areas_rele),aes(y=total_released_pp, x=as.factor(month), colour=as.factor(year)))
-released_plot_filt <- released_plot_filt + geom_point()+ geom_hline(yintercept = 20)+ facet_wrap(~area, scales="free")
-released_plot_filt
-ggsave("Plots/released_plot_filt.png", released_plot_filt)
-
-
-p <- ggplot(irec_raw_combined,aes(y=total_released_pp, x=as.factor(month), colour=as.factor(year)))
-p <- p + geom_point()+  facet_wrap(~area, scales="free")
-p
-
-p <- ggplot(irec_raw_combined,aes(y=total_kept_pp, x=as.factor(year), colour=as.factor(year)))
-p <- p + geom_boxplot()
-p
-
-p <- ggplot(irec_raw_combined,aes(y=total_released_pp, x=as.factor(year), colour=as.factor(year)))
-p <- p + geom_boxplot()
-p
+p5<-wrap_plots(ap_kept_nbc, ncol=5) + plot_annotation(title= 'Northern BC')  + plot_layout(guides = 'collect')     
+ggsave("Plots/kept_plot_nbc.png", p5)
 
 
-p <- ggplot(irec_raw_summed_all %>% filter(disposition=="Released"),aes(y=response, x=month, colour=as.factor(year)))
-p <- p + geom_boxplot()+  facet_wrap(~area, scales="free")
-p
+area_plots_released = list()
+for(area_ in areas) {
+  area_plots_released[[area_]] = ggplot(irec_raw_combined %>% filter(area == area_), aes(y=total_released_pp,x=month, colour=year)) + 
+    ggtitle(irec_raw_combined$area[irec_raw_combined$area == area_])+ theme_classic()+
+    xlab("Month") + ylab("Chinook released per person")+ scale_color_viridis_d(end = 0.8, option = "C", drop=FALSE)+ 
+    geom_point()+ geom_hline(yintercept = 20) + theme(axis.title = element_text(size = 8))+
+    theme(plot.title = element_text(size=8))
+  
+}
+
+area_plots_released["Area 20 (East)"]
+
+ap_released_cbc<-area_plots_released[cbc]
+ap_released_nbc<-area_plots_released[nbc]
+ap_released_gst<-area_plots_released[gst]
+ap_released_jst<-area_plots_released[jst]
+ap_released_wcvi<-area_plots_released[wcvi]
+ap_released_jdf<-area_plots_released[jdf]
+
+p1_r<-wrap_plots(ap_released_wcvi, ncol=5) +  plot_annotation(title = 'West Coast Vancouver Island')+ plot_layout(guides = 'collect') 
+ggsave("Plots/released_plot_wcvi.png", p1_r)
+p2_r<-wrap_plots(c(ap_released_jst, ap_released_gst,ap_released_jdf), ncol=5) +  plot_annotation(title = 'Johnstone Strait & Georgia Strait & Juan de Fuca')+ plot_layout(guides = 'collect') 
+ggsave("Plots/released_plot_jst_gst.png", p2_r)
+p3_r<-wrap_plots(ap_released_cbc, ncol=5) + plot_annotation(title= 'Central BC')+ plot_layout(guides = 'collect') 
+ggsave("Plots/released_plot_cbc.png", p3_r)
+p5_r<-wrap_plots(ap_released_nbc, ncol=5) + plot_annotation(title= 'Northern BC')  + plot_layout(guides = 'collect')     
+ggsave("Plots/released_plot_nbc.png", p5_r)
+
 
 # Qc report ---------------------------------------------------------------
 #useful functions
+"%notin%" <- Negate("%in%")
 merge.all <- function(x, y) {
   merge(x, y, all=TRUE, by="id_ignore")
 }
@@ -276,9 +318,17 @@ released_high_juv<- released_high %>% group_by(juveniles) %>% summarise(n_juv= n
 DataList_released<-list(released_high_area, released_high_year,released_high_guide, released_high_lodge, released_high_juv)
 released_investigate <- Reduce(merge.all, DataList_released)
 released_investigate <-released_investigate %>% select(-id_ignore) %>% as_tibble()
+# Issue 2.2 - sublegal
+sublegal_released_high<-irec_raw_combined %>% filter(sublegal_released_pp>20)  %>% arrange(desc(sublegal_released_pp))
+# Issue 2.3 legal
+legal_released_high<-irec_raw_combined %>% filter(legal_released_pp>20)  %>% arrange(desc(legal_released_pp))
+
+
 
 # Issue 3 - Total caught (kept + released)
-total_high<-irec_raw_combined %>% filter(total_caught_pp>20)  %>% arrange(desc(total_caught_pp))
+total_high<-irec_raw_combined %>% filter(total_caught_pp>20, total_released_pp <21, total_kept_pp<5) %>% arrange(desc(total_caught_pp))
+
+
 # Issue 3.1 - total caught investigations
 total_high_area<- total_high %>% group_by(area) %>% summarise(n_area= n()) %>% arrange(desc(n_area)) %>% mutate(id_ignore = row_number())
 total_high_year<- total_high %>% group_by(year) %>% summarise(n_year= n()) %>% arrange(desc(n_year)) %>% mutate(id_ignore = row_number())
@@ -301,8 +351,6 @@ irec_liscences_flag<- irec_raw_combined %>% mutate(kept_high= case_when(total_ke
                                                  summarise_if(is.numeric, sum) %>%       
                                                  filter(flag_count > 0) %>%       
                                                  arrange(desc(flag_count)) 
- # length(unique(irec_raw_combined$licence.id))
-# hist(irec_liscences_flag$flag_day)
 
 #Summary table
 explore_summary_irec <- data.frame(Issue_ID=character(), Issue=character(), Count=integer(),
@@ -312,8 +360,10 @@ explore_summary_irec <- data.frame(Issue_ID=character(), Issue=character(), Coun
 explore_summary_irec <- explore_summary_irec  %>% 
   add_row(Issue_ID="1", Issue="High # Kept", Count=nrow(kept_high), Definition="Number of total chinook kept per person is over 4") %>% 
   add_row(Issue_ID="1.1", Issue="High # Kept summaries", Count=nrow(kept_high), Definition="Number of total chinook kept per person is over 4, summarized by area, year, guide, lodge, and juveniles") %>% 
-  add_row(Issue_ID="2", Issue="High # Released", Count=nrow(released_high), Definition="Number of total chinook released per person is over 20") %>% 
-  add_row(Issue_ID="2.1", Issue="High # Released summaries", Count=nrow(kept_high), Definition="Number of total chinook released per person is over 20, summarized by area, year, guide, lodge, and juveniles") %>% 
+  add_row(Issue_ID="2", Issue="High # Total Released", Count=nrow(released_high), Definition="Number of total chinook released (sublegal, legal, and unknown) per person is over 20") %>% 
+  add_row(Issue_ID="2.1", Issue="High # Released summaries", Count=nrow(released_high), Definition="Number of total chinook released per person is over 20, summarized by area, year, guide, lodge, and juveniles") %>% 
+  add_row(Issue_ID="2.2", Issue="High # Sublegal Released", Count=nrow(sublegal_released_high), Definition="Number of sublegal chinook released per person is over 20, summarized by area, year, guide, lodge, and juveniles") %>% 
+  add_row(Issue_ID="2.3", Issue="High # Legal Released", Count=nrow(legal_released_high), Definition="Number of legal chinook released per person is over 20, summarized by area, year, guide, lodge, and juveniles") %>% 
   add_row(Issue_ID="3", Issue="High # Caught", Count=nrow(total_high), Definition="Number of total chinook caught per person is over 20") %>% 
   add_row(Issue_ID="3.1", Issue="High # Caught summaries", Count=nrow(total_high), Definition="Number of total chinook caught per person is over 20, summarized by area, year, guide, lodge, and juveniles") %>% 
   add_row(Issue_ID="4", Issue="Licences w flags", Count=nrow(irec_liscences_flag), Definition="Licence.id has at least one of: high # kept, high # released or high # caught")
@@ -323,6 +373,8 @@ sheet_list_irec<-list(Summary=explore_summary_irec,
                  "1.1 - High_Kept_sum"=kept_investigate,
                  "2 - High_Released"=released_high,
                  "2.1 - High_Released_sum"=released_investigate,
+                 "2.2 - High Sublegals" = sublegal_released_high,
+                 "2.3 - High Legals" = legal_released_high,
                  "3 - High_Caught" = total_high,
                  "3.1 - High_Caught_sum" = total_investigate,
                  "4 - Licence_flags" = irec_liscences_flag                               
@@ -331,150 +383,6 @@ sheet_list_irec<-list(Summary=explore_summary_irec,
 writexl::write_xlsx(sheet_list_irec, path="irec_QC.xlsx")
 
 
-# Extra code for next steps -----------------------------------------------
-
-
-
-
-#
-# quantile(irec_raw_combined$total_kept_pp, na.rm=TRUE)
-
-## problem is outlier analysis is saying everything is an outlier.... 
-#might just be easier to say over this amount kept etc... 
-
-
-
-# Is extreme?
-IsExtreme <- function(data) {
-  lowerq = quantile(data, na.rm = TRUE)[2]
-  upperq = quantile(data, na.rm = TRUE)[4]
-  iqr = upperq - lowerq 
-  threshold_upper = (iqr * 1.5) + upperq
-  # threshold_lower = lowerq - (iqr * 1.5)
-  data > threshold_upper 
-}
-
-
-### find the outliers https://www.r-bloggers.com/2017/12/combined-outlier-detection-with-dplyr-and-ruler/
-IsOutlier <- function(data) {
-  lowerq = quantile(data, na.rm = TRUE)[2]
-  upperq = quantile(data, na.rm = TRUE)[4]
-  iqr = upperq - lowerq 
-  threshold_upper = (iqr * 1.5) + upperq
-  # threshold_lower = lowerq - (iqr * 1.5)
-  data > threshold_upper 
-}
-
-# took out | data < threshold lower
-
-# outlier by zscores
-isnt_out_z <- function(x, thres = 3, na.rm = TRUE) {
-  abs(x - mean(x, na.rm = na.rm)) <= thres * sd(x, na.rm = na.rm)
-}
-
-#outlier by median absolute deviation 
-isnt_out_mad <- function(x, thres = 3, na.rm = TRUE) {
-  abs(x - median(x, na.rm = na.rm)) <= thres * mad(x, na.rm = na.rm)
-}
-
-# tukey
-isnt_out_tukey <- function(x, k = 1.5, na.rm = TRUE) {
-  quar <- quantile(x, probs = c(0.25, 0.75), na.rm = na.rm)
-  iqr <- diff(quar)
-  
-  (quar[1] - k * iqr <= x) 
-  # & (x <= quar[2] + k * iqr)
-}
-
-isnt_out_funs <- funs(
-  z = isnt_out_z,
-  mad = isnt_out_mad,
-  tukey = isnt_out_tukey
-)
-
-# might need tot ake out zeros for this to work.... 
-# this gives you 5000 days
-irec_outliers<-irec_raw_combined %>% select(licence.id, year, area, month, method, total_released_pp, total_kept_pp) %>% 
-                      group_by(year, area, month, method) %>% 
-                      mutate_if(is.numeric, isnt_out_funs)
-
-View(irec_outliers)
-#Explorations
-irec_kept_outliers<-irec_raw_combined %>% filter(identify_outliers(total_kept_pp))
-irec_released_outliers<-irec_raw_combined  %>% filter(IsOutlier(total_released_pp)== "TRUE") 
-
-
-irec_raw_combined  %>% anomalize(total_kept_pp) %>% filter(anomaly=="yes")
-
-View(irec_released_outliers)
-
-# identify_outliers() from the rstatix package is good, also have is.extreme
-irec_kept_outliers<-irec_raw_combined %>%  filter(total_kept_pp>1) %>% group_by(year, month, area, method) %>%  filter(is_extreme(total_kept_pp))
-irec_released_outliers<-irec_raw_combined %>%  filter(total_released_pp>1) %>% group_by(year, month, area, method) %>%  filter(is_extreme(total_released_pp))
-
-
-
-View(irec_kept_outliers)
-
-
-# Comparing irec raw to irec estimated:
-irec_raw_summed<-irec_raw_combined %>% filter(method == "Angling from boat") %>% group_by(year, month, area) %>% 
-                                       summarise(Kept = sum(total_kept), 
-                                                 Released = sum(total_released)) 
-                                                
-
-irec_raw_summed<-irec_raw_summed %>% pivot_longer(c(Kept, Released), names_to="disposition", values_to="response")
-
-
-irec_raw_summed <- irec_raw_summed %>% mutate(area = case_when(
-                                              area == "Area 19 Main Portion" ~ "Area 19 (JDF)", 
-                                              area == "Area 19 Saanich Inlet only" ~ "Area 19 (GS)", 
-                                              area == "Area 23 Alberni Inlet" ~ "Area 23 (Alberni Canal)", 
-                                              area == "Area 23 Barkley Sound" ~ "Area 23 (Barkley)", 
-                                              area == "Area 2 East" ~ "Area 2E", 
-                                              area == "Area 2 West" ~ "Area 2W", 
-                                              area == "Area 29 Georgia Strait" ~ "Area 29 (Marine)", 
-                                              area == "Area 29 In River" ~ "Area 29 (In River)", 
-                                              TRUE ~ as.character(area)))
-                                              
-###need to expand the irec_raw_summed to zeros
-allobs_raw <- expand.grid(list(
-  area = unique(irec_raw_summed$area),
-  year = unique(irec_raw_summed$year),
-  month = unique(irec_raw_summed$month),
-  disposition = unique(irec_raw_summed$disposition)
-))
-
-#create zero observations, with 0 variance
-irec_raw_summed_all <- left_join(allobs_raw, irec_raw_summed)
-irec_raw_summed_all$response[is.na(irec_raw_summed_all$response)] <- 0
-irec_raw_summed_all<- as_tibble(irec_raw_summed_all)
-irec_raw_summed_all
-
-#ireccc - this is the expanded one with all the zeros - make sure to include 2012
-names(ireccc) <- tolower(names(ireccc))
-irec_calculated_summed<-ireccc %>% select (- lu_grouping3) %>% group_by(year, month, area, disposition) %>% 
-  summarise(estimate = sum(irec), estimate_var = sum(sdirec)) 
-irec_calculated_summed
-# Combine the two expanded ones
-irec_compare<-merge(irec_calculated_summed, irec_raw_summed_all, all=TRUE) %>% as_tibble()
-
-p <- ggplot(irec_compare) +
-  geom_point(aes(x = estimate, y = total.chinook.caught, color=as.factor(year)), size = 2, alpha = .5) +
-  theme_bw(16)+
-  scale_color_viridis_d(end = 0.8, option = "C") +
-  geom_abline(slope = 1, intercept = 0) +
-  theme(legend.position = "bottom")
-p
-
-
-p <- ggplot(irec_compare ,aes(y=response, x=estimate,fill=as.factor(year), color=as.factor(year), shape=disposition, linetype=disposition))
-p <- p + geom_point(size=2, alpha=.5)
-p <- p + geom_smooth(method = lm, formula= y~x,  size = 2, alpha  = .2) # to add regression line
-p <- p + theme_bw(16)+labs( y="irec response", x="irec estimate expanded")
-p <- p + scale_color_viridis_d(end = 0.8,option = "B")+ scale_fill_viridis_d(end = 0.8,option = "B")
-p <- p + theme(legend.position="bottom")
-p
 
 
 
@@ -484,43 +392,3 @@ p
 
 
 
-
-
-
-# Imputation
-
-library(smcfcs)
-
-set.seed(1234)
-n <- 1000
-x <- rnorm(n)
-w <- x+rnorm(n)
-y <- x+rnorm(n)
-x[(n*0.1):n] <- NA
-simData <- data.frame(x,w,y)
-
-
-imps <- smcfcs(simData, smtype="lm", smformula="y~x",
-               method=c("norm", "", ""),m=5)
-
-predMat <- array(0, dim=c(3,3))
-predMat[1,2] <- 1
-
-
-imps <- smcfcs(simData, smtype="lm", smformula="y~x",
-               method=c("norm", "", ""),m=5,
-               predictorMatrix=predMat)
-
-library(mitools)
-impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, lm(y~x))
-summary(MIcombine(models))
-
-
-x <- rnorm(n)
-w1 <- x+rnorm(n)
-w2 <- x+rnorm(n)
-w2[(n*0.1):n] <- NA
-y <- x+rnorm(n)
-x <- rep(NA,n)
-simData <- data.frame(x,w1,w2,y)
