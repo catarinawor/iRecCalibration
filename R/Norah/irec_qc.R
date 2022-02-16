@@ -31,9 +31,9 @@ library(rstatix)
 
 # irec raw data, comes in three separate sheets for different dates
 #the sheets are in different formats so need to standardize
-irec_raw <- read.csv(here::here("data/chinook responses_sheet1.csv")) %>% as_tibble()
-irec_raw2 <- read.csv(here::here("data/chinook responses_sheet2.csv"))%>% as_tibble()
-irec_raw3 <- read.csv(here::here("data/chinook responses_sheet3.csv"))%>% as_tibble()
+irec_raw <- read.csv(here::here("data/Norah/chinook responses_sheet1.csv")) %>% as_tibble()
+irec_raw2 <- read.csv(here::here("data/Norah/chinook responses_sheet2.csv"))%>% as_tibble()
+irec_raw3 <- read.csv(here::here("data/Norah/chinook responses_sheet3.csv"))%>% as_tibble()
 
 
 # Formatting --------------------------------------------------------------
@@ -222,6 +222,13 @@ irec_raw_combined<- irec_raw_combined %>%
                     ))
 irec_raw_combined$region<- factor(irec_raw_combined$region, levels = c("West Coast Vancouver Island","Johnstone Strait", "Georgia Strait", "Juan de Fuca", "Central BC" , "Northern BC"), ordered = TRUE)
 
+# irec_raw_combined %>% filter(region == "Central BC", total_released_pp <20) %>% group_by(year)  %>% summarise(tot_rel=sum(total_released_pp), tot_kept=sum(total_kept_pp), tot_caught=sum(total.chinook.caught))
+# irec_raw_combined %>% filter(area == "Area 2 East", total_released_pp <20) %>% group_by(year)  %>% summarise(tot_rel=sum(total_released_pp), tot_kept=sum(total_kept_pp), tot_caught=sum(total.chinook.caught))
+
+# ireccc_loo<- ireccc  %>% group_by(AREA, YEAR, DISPOSITION) %>% summarise(irec.sum=sum(IREC)) %>% filter(AREA %in% c("Area 2E", "Area 101", "Area 102","Area 142", "Area 2W", "Area 2"))
+
+# View(ireccc_loo)
+
 # Plotting ----------------------------------------------------------------
 
 # Looped plots
@@ -295,6 +302,9 @@ merge.all <- function(x, y) {
   merge(x, y, all=TRUE, by="id_ignore")
 }
 
+
+View(irec_raw_combined)
+
 # Issue 1 - Kept
 kept_high<-irec_raw_combined %>% filter(total_kept_pp>4)  %>% arrange(desc(total_kept_pp))
 # Issue 1.1 Kept investigations
@@ -328,7 +338,6 @@ legal_released_high<-irec_raw_combined %>% filter(legal_released_pp>20)  %>% arr
 # Issue 3 - Total caught (kept + released)
 total_high<-irec_raw_combined %>% filter(total_caught_pp>20, total_released_pp <21, total_kept_pp<5) %>% arrange(desc(total_caught_pp))
 
-
 # Issue 3.1 - total caught investigations
 total_high_area<- total_high %>% group_by(area) %>% summarise(n_area= n()) %>% arrange(desc(n_area)) %>% mutate(id_ignore = row_number())
 total_high_year<- total_high %>% group_by(year) %>% summarise(n_year= n()) %>% arrange(desc(n_year)) %>% mutate(id_ignore = row_number())
@@ -340,17 +349,29 @@ total_investigate <- Reduce(merge.all, DataList_total)
 total_investigate <-total_investigate %>% select(-id_ignore) %>% as_tibble()
 
 
-# Issue 4 - Licences flagged
-irec_liscences_flag<- irec_raw_combined %>% mutate(kept_high= case_when(total_kept_pp>4 ~ 1, TRUE ~ 0), 
-                                                 released_high = case_when(total_released_pp>20 ~1, TRUE ~ 0), 
-                                                 total_high = case_when(total_caught_pp>20 ~ 1, TRUE ~0), 
-                                                 flag_count = kept_high + released_high + total_high, 
-                                                 flag_day = case_when(flag_count >0 ~ 1, TRUE ~0)) %>% 
-                                                 select (licence.id, kept_high, released_high, total_high, flag_count, flag_day) %>% 
-                                                 group_by(licence.id) %>% 
-                                                 summarise_if(is.numeric, sum) %>%       
-                                                 filter(flag_count > 0) %>%       
-                                                 arrange(desc(flag_count)) 
+# Issue 4 - Kept by licence holder per day (across areas & methods, not already included in Issue 1)
+licence_day_kept<-irec_raw_combined  %>% group_by(licence.id, year, month, day) %>%  summarise_if(is.numeric, sum, na.RM=TRUE) %>%  filter(total_kept_pp>4) %>% arrange(desc(total_kept_pp)) 
+licence_day_kept<- licence_day_kept %>% filter(licence.id %notin% c(total_high$licence.id,released_high$licence.id, kept_high$licence.id))
+
+# Issue 5 - Released by licence holder per day (across areas & methods, licences not already included in Issue 2)
+licence_day_released<-irec_raw_combined  %>% group_by(licence.id, year, month, day) %>%  summarise_if(is.numeric, sum, na.RM=TRUE) %>%  filter(total_released_pp>20) %>% arrange(desc(total_released_pp))
+licence_day_released<- licence_day_released %>% filter(licence.id %notin% c(total_high$licence.id,released_high$licence.id, kept_high$licence.id))
+
+# Issue 6 - Total caught by licence holder per day (across areas & methods, licences not already included in Issue 3)
+licence_day_total<-irec_raw_combined  %>% group_by(licence.id, year, month, day) %>%  summarise_if(is.numeric, sum, na.RM=TRUE) %>%  filter(total_caught_pp>20) %>% arrange(desc(total_caught_pp))
+licence_day_total<- licence_day_total %>% filter(licence.id %notin% c(total_high$licence.id,released_high$licence.id, kept_high$licence.id, licence_day_released$licence.id, licence_day_kept$licence.id))
+
+# # Issue 7 - Licences flagged
+# irec_liscences_flag<- irec_raw_combined %>% mutate(kept_high= case_when(total_kept_pp>4 ~ 1, TRUE ~ 0), 
+#                                                    released_high = case_when(total_released_pp>20 ~1, TRUE ~ 0), 
+#                                                    total_high = case_when(total_caught_pp>20 ~ 1, TRUE ~0), 
+#                                                    flag_count = kept_high + released_high + total_high, 
+#                                                    flag_day = case_when(flag_count >0 ~ 1, TRUE ~0)) %>% 
+#                                                    select (licence.id, kept_high, released_high, total_high, flag_count, flag_day) %>% 
+#                                                    group_by(licence.id) %>% 
+#                                                    summarise_if(is.numeric, sum) %>%       
+#                                                    filter(flag_count > 0) %>%       
+#                                                    arrange(desc(flag_count)) 
 
 #Summary table
 explore_summary_irec <- data.frame(Issue_ID=character(), Issue=character(), Count=integer(),
@@ -366,7 +387,11 @@ explore_summary_irec <- explore_summary_irec  %>%
   add_row(Issue_ID="2.3", Issue="High # Legal Released", Count=nrow(legal_released_high), Definition="Number of legal chinook released per person is over 20, summarized by area, year, guide, lodge, and juveniles") %>% 
   add_row(Issue_ID="3", Issue="High # Caught", Count=nrow(total_high), Definition="Number of total chinook caught per person is over 20") %>% 
   add_row(Issue_ID="3.1", Issue="High # Caught summaries", Count=nrow(total_high), Definition="Number of total chinook caught per person is over 20, summarized by area, year, guide, lodge, and juveniles") %>% 
-  add_row(Issue_ID="4", Issue="Licences w flags", Count=nrow(irec_liscences_flag), Definition="Licence.id has at least one of: high # kept, high # released or high # caught")
+  add_row(Issue_ID="4", Issue="Licence/day kept", Count=nrow(licence_day_kept), Definition="Number of kept chinook caught per person per day is over 4, regardless of area and method") %>% 
+  add_row(Issue_ID="5", Issue="Licence/day released", Count=nrow(licence_day_released), Definition="Number of released chinook caught per person per day is over 20, regardless of area and method") %>% 
+  add_row(Issue_ID="6", Issue="Licence/day total", Count=nrow(licence_day_total), Definition="Number of total chinook caught per person per day is over 20, regardless of area and method") 
+  
+   #add_row(Issue_ID="7", Issue="Licences w flags", Count=nrow(irec_liscences_flag), Definition="Licence.id has at least one of: high # kept, high # released or high # caught")
 
 sheet_list_irec<-list(Summary=explore_summary_irec,
                  "1 - High_Kept"=kept_high,
@@ -377,7 +402,10 @@ sheet_list_irec<-list(Summary=explore_summary_irec,
                  "2.3 - High Legals" = legal_released_high,
                  "3 - High_Caught" = total_high,
                  "3.1 - High_Caught_sum" = total_investigate,
-                 "4 - Licence_flags" = irec_liscences_flag                               
+                 "4 - Licence_day kept" = licence_day_kept, 
+                 "5 - Licence_day released" = licence_day_released, 
+                 "6 - Licence_day total" = licence_day_total
+                # "7 - Licence_flags" = irec_liscences_flag                               
                  )
 
 writexl::write_xlsx(sheet_list_irec, path="irec_QC.xlsx")
