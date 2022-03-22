@@ -25,6 +25,12 @@ library(visdat)
 library(stringr)
 library(ruler)
 library(rstatix)
+library(janitor)
+library(haven)
+library(iRecAnalysisPkg)
+library(labelled)
+
+remotes::install_git("https://github.com/Pacific-salmon-assess/iRecAnalysisPkg.git")  
 
 
 # Loading -----------------------------------------------------------------
@@ -34,13 +40,194 @@ library(rstatix)
 irec_raw <- read.csv(here::here("data/Norah/chinook responses_sheet1.csv")) %>% as_tibble()
 irec_raw2 <- read.csv(here::here("data/Norah/chinook responses_sheet2.csv"))%>% as_tibble()
 irec_raw3 <- read.csv(here::here("data/Norah/chinook responses_sheet3.csv"))%>% as_tibble()
+  
+###### alternative data to irec_raw, which has dates by day not just month
+#201314
+January_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - January 1-31 Complete Data set.sav"))
+February_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - February 1-28 Complete Data set.sav"))
+March_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - March 1-31 Complete Data set.sav"))
+April_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - April 1-30 Complete Data set.sav"))
+May_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - May 1-31 Complete Data set.sav"))
+June_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - June 1-30 2013 Complete Data set_v2.sav"))
+July_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - July 1-31 2013 Complete Data set_v2.sav"))
+August_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - August 1-31 2013 Complete Data set_v2.sav"))
+September_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - September 1-30 Complete Data set.sav"))
+October_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - October 1-31 Complete Data set.sav"))
+November_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - November 1-30 Complete Data set.sav"))
+December_201314_sav<-read_sav(here::here("data/Norah/EKOS SAV 201314/01512FULL - December 1-31 Complete Data set.sav"))
+
+#201415
+January_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - January 1-31 2015 Complete Data set_v2.sav"))
+February_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - February 1-28 Complete Data set.sav"))
+March_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - March 1-31 2015 Complete Data set_v2.sav"))
+April_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - April 1-30 2014 Complete Data set_v2.sav"))
+May_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - May 1-31 Complete Data set.sav"))
+June_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - June 1-30 2014 Complete Data set_v2.sav"))
+July_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - July 1-31 2014 Complete Data set_v2.sav"))
+August_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - August 1-31 2014 Complete Data set_v2.sav"))
+September_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - September 1-30 2014 Complete Data set_v2.sav"))
+October_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - October 1-31 2014 Complete Data set_v2.sav"))
+November_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - November 1-30 Complete Data set.sav"))
+December_201415_sav<-read_sav(here::here("data/Norah/EKOS SAV 201415/01512FULL - December 1-31 Complete Data set_v2.sav"))
+
+write.csv(December_201415_sav, "December_201415_sav.csv", row.names = FALSE)
+write.csv(August_201415_sav, "August_201415_sav.csv", row.names = FALSE)
+
+
+#201516
+April_201516_sav<-read_sav(here::here("data/Norah/EKOS SAV 201516/01512FULL - April 1-30 2015 Complete Data set_v2.sav"))
+May_201516_sav<-read_sav(here::here("data/Norah/EKOS SAV 201516/01512FULL - May 1-31 2015 Complete Data set_v2.sav"))
+June_201516_sav<-read_sav(here::here("data/Norah/EKOS SAV 201516/01512FULL - June 1-30 2015 Complete Data set_v2.sav"))
+
+#Fixing licence as character problem
+January_201415_sav$Licence_ID<-as.double(January_201415_sav$Licence_ID)
+February_201415_sav$Licence_ID<-as.double(February_201415_sav$Licence_ID)
+March_201415_sav$Licence_ID<-as.double(March_201415_sav$Licence_ID)
+April_201415_sav$Licence_ID<-as.double(April_201415_sav$Licence_ID)
+October_201415_sav$Licence_ID<-as.double(October_201415_sav$Licence_ID)
+November_201415_sav$Licence_ID<-as.double(November_201415_sav$Licence_ID)
+December_201415_sav$Licence_ID<-as.double(December_201415_sav$Licence_ID)
+
+April_201516_sav$Licence_ID<-as.double(April_201516_sav$Licence_ID)
+May_201516_sav$Licence_ID<-as.double(May_201516_sav$Licence_ID)
+June_201516_sav$Licence_ID<-as.double(June_201516_sav$Licence_ID)
+
+
+all_201314_sav<-bind_rows(January_201314_sav, February_201314_sav, March_201314_sav, April_201314_sav, May_201314_sav, June_201314_sav, July_201314_sav, August_201314_sav, September_201314_sav, October_201314_sav, November_201314_sav, December_201314_sav) 
+all_201415_sav<- bind_rows(January_201415_sav, February_201415_sav, March_201415_sav, April_201415_sav, May_201415_sav, June_201415_sav, July_201415_sav, August_201415_sav, September_201415_sav, October_201415_sav, November_201415_sav, December_201415_sav) 
+all_201516_sav<- bind_rows(April_201516_sav, May_201516_sav, June_201516_sav)
+
+all_sav<-bind_rows(January_201314_sav, February_201314_sav, March_201314_sav, April_201314_sav, May_201314_sav, June_201314_sav, July_201314_sav, August_201314_sav, September_201314_sav, October_201314_sav, November_201314_sav, December_201314_sav, 
+                   January_201415_sav, February_201415_sav, March_201415_sav, April_201415_sav, May_201415_sav, June_201415_sav, July_201415_sav, August_201415_sav, September_201415_sav, October_201415_sav, November_201415_sav, December_201415_sav, 
+                   April_201516_sav, May_201516_sav, June_201516_sav)
+
+
+#remove test Rahme (test) 999997
+all_sav<- all_sav %>% filter(Licence_ID != c(999997, 999998)) %>% 
+                      select(Licence_ID, REPYEAR, REPMONTH, REPDAY, REPZONE, REPMETHOD, AJUVEPRES,
+                             ASALMON_CHINOOK_HATCH_KEPT, ASALMON_CHINOOK_HATCH_RELE, 
+                             ASALMON_CHINOOK_WILD_KEPT, ASALMON_CHINOOK_WILD_RELE, 
+                             ASALMON_CHINOOK_UNK_KEPT, ASALMON_CHINOOK_UNK_RELE, 
+                             ASALMON_CHINOOK_SUBL_RELE, REVIEW:COMPFISH_1) %>% 
+                      rename(licence.id = Licence_ID, 
+                             year = REPYEAR, 
+                             month = REPMONTH, 
+                             day = REPDAY, 
+                             area = REPZONE, 
+                             method = REPMETHOD, 
+                             juveniles = AJUVEPRES, 
+                             salmon_chinook_hatch_kept = ASALMON_CHINOOK_HATCH_KEPT, 
+                             salmon_chinook_hatch_rele = ASALMON_CHINOOK_HATCH_RELE, 
+                             salmon_chinook_wild_kept = ASALMON_CHINOOK_WILD_KEPT, 
+                             salmon_chinook_wild_rele = ASALMON_CHINOOK_WILD_RELE, 
+                             salmon_chinook_unk_kept = ASALMON_CHINOOK_UNK_KEPT, 
+                             salmon_chinook_unk_rele = ASALMON_CHINOOK_UNK_RELE, 
+                             salmon_chinook_subl_rele = ASALMON_CHINOOK_SUBL_RELE) %>% 
+                      mutate(month = case_when(
+                        month == 1001 ~ 1, 
+                        month == 1002 ~ 2,
+                        month == 1003 ~ 3,
+                        month == 1004 ~ 4,
+                        month == 1005 ~ 5,
+                        month == 1006 ~ 6,
+                        month == 1007 ~ 7,
+                        month == 1008 ~ 8,
+                        month == 1009 ~ 9,
+                        month == 1010 ~ 10,
+                        month == 1011 ~ 11,
+                        month == 1012 ~ 12), 
+                        day = case_when(
+                          day == 1001 ~ 1, 
+                          day == 1002 ~ 2,
+                          day == 1003 ~ 3,
+                          day == 1004 ~ 4,
+                          day == 1005 ~ 5,
+                          day == 1006 ~ 6,
+                          day == 1007 ~ 7,
+                          day == 1008 ~ 8,
+                          day == 1009 ~ 9,
+                          day == 1010 ~ 10,
+                          day == 1011 ~ 11,
+                          day == 1012 ~ 12, 
+                          day == 1013 ~ 13,
+                          day == 1014 ~ 14,
+                          day == 1015 ~ 15, 
+                          day == 1016 ~ 16,
+                          day == 1017 ~ 17,
+                          day == 1018 ~ 18,
+                          day == 1019 ~ 19,
+                          day == 1020 ~ 20,
+                          day == 1021 ~ 21,
+                          day == 1022 ~ 22, 
+                          day == 1023 ~ 23,
+                          day == 1024 ~ 24,
+                          day == 1025 ~ 25, 
+                          day == 1026 ~ 26,
+                          day == 1027 ~ 27,
+                          day == 1028 ~ 28,
+                          day == 1029 ~ 29,
+                          day == 1030 ~ 30, 
+                          day == 1031 ~ 31),  
+                        area = to_factor(area, levels = "l"), 
+                        method = to_factor(method, levels = "l")) %>%
+                        mutate(Licence_ID = trimws(Licence_ID),
+                               DNF_1 = !is.na(DNF_1),
+                               First_name = trimws(First_name),
+                               Last_name = trimws(Last_name),
+                               AMAIL = trimws(AMAIL)) %>%
+                        rename(did_not_fish = DNF_1,
+                               licence_id = Licence_ID,
+                               first_name = First_name,
+                               last_name = Last_name,
+                               email = AMAIL,
+                               area = REPZONE,
+                               method = REPMETHOD,
+                               effort_days = COMPLETE) %>%
+                        mutate_at(vars(area, method), iRecAnalysisPkg:::labelText)
+
+#did not fish = FALSE if DNF_1 was NA
+#did not fish is TRUE is DNF was not NA
+
+complete_surveys <- August_201415_sav_Norah %>% filter(effort_days == 1 | did_not_fish == TRUE)
+
+#complete surveys are where effort days = 1 OR did not fish is TRUE
+### Stopped here ... Anne says can do as I like. 
+
+###
+
+ekos_data <-
+  complete_surveys %>%
+  mutate(effort_days = if_else(did_not_fish == 1, 0, effort_days))
+
+View(complete_surveys)
+View(ekos_data)
+
+all_sav$salmon_chinook_hatch_kept[is.na(all_sav$salmon_chinook_hatch_kept)]<- 0
+all_sav$salmon_chinook_hatch_rele[is.na(all_sav$salmon_chinook_hatch_rele)]<- 0
+all_sav$salmon_chinook_wild_kept[is.na(all_sav$salmon_chinook_wild_kept)]<- 0
+all_sav$salmon_chinook_wild_rele[is.na(all_sav$salmon_chinook_wild_rele)]<- 0
+all_sav$salmon_chinook_unk_kept[is.na(all_sav$salmon_chinook_unk_kept)]<- 0
+all_sav$salmon_chinook_unk_rele[is.na(all_sav$salmon_chinook_unk_rele)]<- 0
+all_sav$salmon_chinook_subl_rele[is.na(all_sav$salmon_chinook_subl_rele)] <- 0
+
+# qc on raw sheets, duplicates, NAs --------------------------------------------------------
+#irec_raw_dupes<- irec_raw %>% get_dupes()
+##need to get dupes after I add in "day" 
+
+irec_raw2_dupes<- irec_raw2 %>% get_dupes()
+irec_raw3_dupes<- irec_raw3 %>% get_dupes()
+
+View(irec_raw3_dupes)
+#filter these out later in irec_raw_combined
+
+
 
 
 # Formatting --------------------------------------------------------------
 
 # formatting raw 1
 names(irec_raw) <- tolower(names(irec_raw))
-irec_raw<- irec_raw %>%  mutate_at(c("lodge", "guided", "month"), function(x) tolower(as.character(x)))
+irec_raw<- irec_raw %>%  select(-day) %>%  mutate_at(c("lodge", "guided", "month"), function(x) tolower(as.character(x)))
 irec_raw<- irec_raw %>% mutate(month = case_when(
                                        month == "january" ~ "1",
                                        month == "february" ~ "2",
@@ -57,14 +244,49 @@ irec_raw<- irec_raw %>% mutate(month = case_when(
                                        TRUE ~ as.character(month)))
 irec_raw$month<-as.integer(irec_raw$month)
 irec_raw$licence.id<-as.character(irec_raw$licence.id)
-irec_raw$day<-row.names(irec_raw)
-irec_raw$day<-as.integer(irec_raw$day)
+
+unique(irec_raw$year)
+
+all_sav<-all_sav %>% mutate(across(c(licence.id, area, method), as.character)) %>% 
+                     mutate(across( c(year, month, day, juveniles,
+                                    salmon_chinook_hatch_kept,
+                                    salmon_chinook_hatch_rele,
+                                    salmon_chinook_wild_kept, 
+                                    salmon_chinook_wild_rele, 
+                                    salmon_chinook_unk_kept,
+                                    salmon_chinook_unk_rele,
+                                    salmon_chinook_subl_rele), as.integer)) %>% 
+                                    relocate(day, .after=month) %>%                   
+                                    drop_na(day)
+
+View(all_sav)
+#all_sav has 55,228 rows with a day value (i.e. takes out the did not fish)
+#irec_raw has 17357 rows
+#irec_raw1 has 23,000 rows ... there shouldn't be more?? 
+irec_raw1<-left_join(irec_raw, all_sav, by=c("licence.id", "year", "month", "area", "method", "juveniles",
+                                              "salmon_chinook_hatch_kept",
+                                              "salmon_chinook_hatch_rele",
+                                              "salmon_chinook_wild_kept", 
+                                              "salmon_chinook_wild_rele", 
+                                              "salmon_chinook_unk_kept",
+                                              "salmon_chinook_unk_rele",
+                                              "salmon_chinook_subl_rele")) %>% relocate(day, .after=month)
+      
+
+
+View(irec_raw1)
+
 irec_raw$salmon_chinook_us_hatchery_kept<-0
 irec_raw$salmon_chinook_us_hatchery_rele<-0
 irec_raw$salmon_chinook_us_wild_kept<-0
 irec_raw$salmon_chinook_us_wild_rele<-0
 irec_raw$salmon_chinook_us_unkown_kept<-0
 irec_raw$salmon_chinook_us_unkown_rele<-0
+
+irec_raw<-irec_raw %>% unite("id_area_method", c(licence.id, year, month, day, area, method), remove=FALSE)
+
+
+
 
 
 # formatting raw 2 and 3
@@ -221,14 +443,19 @@ irec_raw_combined<- irec_raw_combined %>%
                     TRUE ~ "other"
                     ))
 irec_raw_combined$region<- factor(irec_raw_combined$region, levels = c("West Coast Vancouver Island","Johnstone Strait", "Georgia Strait", "Juan de Fuca", "Central BC" , "Northern BC"), ordered = TRUE)
+irec_raw_combined<-irec_raw_combined %>% unite("id_day", c(licence.id, year, month, day), remove=FALSE) %>% unite("id_area", c(licence.id, year, month, day, area), remove=FALSE)
 
-# irec_raw_combined %>% filter(region == "Central BC", total_released_pp <20) %>% group_by(year)  %>% summarise(tot_rel=sum(total_released_pp), tot_kept=sum(total_kept_pp), tot_caught=sum(total.chinook.caught))
-# irec_raw_combined %>% filter(area == "Area 2 East", total_released_pp <20) %>% group_by(year)  %>% summarise(tot_rel=sum(total_released_pp), tot_kept=sum(total_kept_pp), tot_caught=sum(total.chinook.caught))
+irec_raw_combined %>% get_dupes(id_day)
 
-# ireccc_loo<- ireccc  %>% group_by(AREA, YEAR, DISPOSITION) %>% summarise(irec.sum=sum(IREC)) %>% filter(AREA %in% c("Area 2E", "Area 101", "Area 102","Area 142", "Area 2W", "Area 2"))
 
-# View(ireccc_loo)
+get_dupes(irec_raw_combined)
+unique(irec_raw_combined)
 
+
+irec_raw_combined_dupes<- irec_raw_combined %>% get_dupes()
+
+
+irec_raw_combined<-unique(irec_raw_combined)
 # Plotting ----------------------------------------------------------------
 
 # Looped plots
@@ -302,9 +529,6 @@ merge.all <- function(x, y) {
   merge(x, y, all=TRUE, by="id_ignore")
 }
 
-
-View(irec_raw_combined)
-
 # Issue 1 - Kept
 kept_high<-irec_raw_combined %>% filter(total_kept_pp>4)  %>% arrange(desc(total_kept_pp))
 # Issue 1.1 Kept investigations
@@ -348,18 +572,18 @@ DataList_total<-list(total_high_area, total_high_year,total_high_guide, total_hi
 total_investigate <- Reduce(merge.all, DataList_total)
 total_investigate <-total_investigate %>% select(-id_ignore) %>% as_tibble()
 
-
+View(irec_raw_combined)
+View(licence_day_kept)
 # Issue 4 - Kept by licence holder per day (across areas & methods, not already included in Issue 1)
-licence_day_kept<-irec_raw_combined  %>% group_by(licence.id, year, month, day) %>%  summarise_if(is.numeric, sum, na.RM=TRUE) %>%  filter(total_kept_pp>4) %>% arrange(desc(total_kept_pp)) 
-licence_day_kept<- licence_day_kept %>% filter(licence.id %notin% c(total_high$licence.id,released_high$licence.id, kept_high$licence.id))
+licence_day_kept<-irec_raw_combined %>% filter(year==2021)  %>% group_by(id_day) %>%  dplyr::summarise(across(salmon_chinook_hatch_kept:total_caught_pp, sum)) %>%  filter(total_kept_pp>4) %>% arrange(desc(total_kept_pp))  %>% filter(id_day %notin% kept_high$id_day)
 
 # Issue 5 - Released by licence holder per day (across areas & methods, licences not already included in Issue 2)
-licence_day_released<-irec_raw_combined  %>% group_by(licence.id, year, month, day) %>%  summarise_if(is.numeric, sum, na.RM=TRUE) %>%  filter(total_released_pp>20) %>% arrange(desc(total_released_pp))
-licence_day_released<- licence_day_released %>% filter(licence.id %notin% c(total_high$licence.id,released_high$licence.id, kept_high$licence.id))
+licence_day_released<-irec_raw_combined %>% filter(year==2021)  %>% group_by(id_day) %>%  dplyr::summarise(across(salmon_chinook_hatch_kept:total_caught_pp, sum)) %>%  filter(total_released_pp>20) %>% arrange(desc(total_released_pp))  %>% filter(id_day %notin% released_high$id_day)
 
 # Issue 6 - Total caught by licence holder per day (across areas & methods, licences not already included in Issue 3)
-licence_day_total<-irec_raw_combined  %>% group_by(licence.id, year, month, day) %>%  summarise_if(is.numeric, sum, na.RM=TRUE) %>%  filter(total_caught_pp>20) %>% arrange(desc(total_caught_pp))
-licence_day_total<- licence_day_total %>% filter(licence.id %notin% c(total_high$licence.id,released_high$licence.id, kept_high$licence.id, licence_day_released$licence.id, licence_day_kept$licence.id))
+licence_day_total<-irec_raw_combined %>% filter(year==2021)  %>% group_by(id_day) %>%  dplyr::summarise(across(salmon_chinook_hatch_kept:total_caught_pp, sum)) %>%  filter(total_caught_pp>20) %>% arrange(desc(total_caught_pp))  %>% filter(id_day %notin% c(total_high$id_day, released_high$id_day, kept_high$id_day))
+licence_day_total
+
 
 # # Issue 7 - Licences flagged
 # irec_liscences_flag<- irec_raw_combined %>% mutate(kept_high= case_when(total_kept_pp>4 ~ 1, TRUE ~ 0), 
