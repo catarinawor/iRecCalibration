@@ -30,6 +30,7 @@ library(haven)
 library(iRecAnalysisPkg)
 library(labelled)
 library(patchwork)
+library(tidyverse)
 
 #remotes::install_git("https://github.com/Pacific-salmon-assess/iRecAnalysisPkg.git")  
 
@@ -267,17 +268,16 @@ all_sav<- all_sav %>% mutate(total.chinook.caught = rowSums(select(., contains("
 janitor::compare_df_cols(irec_raw, all_sav)
 
 #in all_sav_join but not irec_raw: 6 - with licence as NA, done of these are in irec_raw
-anti_join(all_sav, irec_raw ) 
+ekos_not_irec<- anti_join(all_sav, irec_raw ) 
 
 #32 in irec but not in the ekos sav data
-anti_join(irec_raw, all_sav) 
+irec_not_ekos<-anti_join(irec_raw, all_sav) 
+
+write.csv(ekos_not_irec, "irec_qc_output/ekos_not_irec.csv", row.names = FALSE)
+write.csv(irec_not_ekos, "irec_qc_output/irec_not_ekos.csv", row.names = FALSE)
 
 #irec_raw1 has 16,318 (6 are not in irec_raw), this removes the 32 ... but we don't have day for those anyway, 20 of them have more than 20 fish caught per day so would get filted out anyway. 
 irec_raw1<-semi_join(all_sav, irec_raw) %>% relocate(day, .after=month) 
-
-
- #                                           unite("id_area_method", c(licence.id, year, month, day, area, method), remove=FALSE)
-#
 
 # Formatting 2015 to present data --------------------------------------------------------
 
@@ -442,19 +442,10 @@ irec_raw_combined<- irec_raw_combined %>%
                     TRUE ~ "other"
                     ))
 irec_raw_combined$region<- factor(irec_raw_combined$region, levels = c("West Coast Vancouver Island","Johnstone Strait", "Georgia Strait", "Juan de Fuca", "Central BC" , "Northern BC"), ordered = TRUE)
-irec_raw_combined<-irec_raw_combined %>% unite("id_day", c(licence.id, year, month, day), remove=FALSE) %>% unite("id_area", c(licence.id, year, month, day, area), remove=FALSE)
+irec_raw_combined<-irec_raw_combined %>% unite("id_day", c(licence.id, year, month, day), remove=FALSE) %>% 
+                                         #unite("id_area", c(licence.id, year, month, day, area), remove=FALSE) %>% 
+                                         relocate(c(guided, lodge), .after=juveniles) 
 
-irec_raw_combined %>% get_dupes(id_day)
-
-
-get_dupes(irec_raw_combined)
-unique(irec_raw_combined)
-
-
-irec_raw_combined_dupes<- irec_raw_combined %>% get_dupes()
-
-
-irec_raw_combined<-unique(irec_raw_combined)
 # Plotting ----------------------------------------------------------------
 
 # Looped plots
@@ -524,7 +515,8 @@ ggsave("Plots/released_plot_nbc.png", p5_r)
 # Qc report ---------------------------------------------------------------
 
 # Issue 1 - Kept
-kept_high<-irec_raw_combined %>% filter(total_kept_pp>4)  %>% arrange(desc(total_kept_pp))
+kept_high<-irec_raw_combined %>% filter(total_kept_pp>4)  %>% arrange(desc(total_kept_pp)) %>% add_column(flag_category = "Kept instance over 4") %>% relocate(flag_category)
+
 # Issue 1.1 Kept investigations
 kept_high_area<- kept_high %>% group_by(area) %>% summarise(n_area= n()) %>% arrange(desc(n_area)) %>% mutate(id_ignore = row_number())
 kept_high_year<- kept_high %>% group_by(year) %>% summarise(n_year= n()) %>% arrange(desc(n_year)) %>% mutate(id_ignore = row_number())
@@ -536,7 +528,7 @@ kept_investigate <- Reduce(merge.all, DataList_kept)
 kept_investigate <-kept_investigate %>% select(-id_ignore) %>% as_tibble()
 
 # Issue 2 - Released
-released_high<-irec_raw_combined %>% filter(total_released_pp>20)  %>% arrange(desc(total_released_pp))
+released_high<-irec_raw_combined %>% filter(total_released_pp>20)  %>% arrange(desc(total_released_pp))%>% add_column(flag_category = "Released instance over 20") %>% relocate(flag_category)
 # Issue 2.1 - released investigations
 released_high_area<- released_high %>% group_by(area) %>% summarise(n_area= n()) %>% arrange(desc(n_area)) %>% mutate(id_ignore = row_number())
 released_high_year<- released_high %>% group_by(year) %>% summarise(n_year= n()) %>% arrange(desc(n_year)) %>% mutate(id_ignore = row_number())
@@ -554,7 +546,7 @@ legal_released_high<-irec_raw_combined %>% filter(legal_released_pp>20)  %>% arr
 
 
 # Issue 3 - Total caught (kept + released)
-total_high<-irec_raw_combined %>% filter(total_caught_pp>20, total_released_pp <21, total_kept_pp<5) %>% arrange(desc(total_caught_pp))
+total_high<-irec_raw_combined %>% filter(total_caught_pp>20, total_released_pp <21, total_kept_pp<5) %>% arrange(desc(total_caught_pp))%>% add_column(flag_category = "Total caught instance over 20") %>% relocate(flag_category)
 
 # Issue 3.1 - total caught investigations
 total_high_area<- total_high %>% group_by(area) %>% summarise(n_area= n()) %>% arrange(desc(n_area)) %>% mutate(id_ignore = row_number())
@@ -566,30 +558,18 @@ DataList_total<-list(total_high_area, total_high_year,total_high_guide, total_hi
 total_investigate <- Reduce(merge.all, DataList_total)
 total_investigate <-total_investigate %>% select(-id_ignore) %>% as_tibble()
 
-View(irec_raw_combined)
-View(licence_day_kept)
 # Issue 4 - Kept by licence holder per day (across areas & methods, not already included in Issue 1)
-licence_day_kept<-irec_raw_combined %>% filter(year==2021)  %>% group_by(id_day) %>%  dplyr::summarise(across(salmon_chinook_hatch_kept:total_caught_pp, sum)) %>%  filter(total_kept_pp>4) %>% arrange(desc(total_kept_pp))  %>% filter(id_day %notin% kept_high$id_day)
+licence_day_kept<-irec_raw_combined %>% group_by(licence.id, year, month, day, id_day) %>%  dplyr::summarise(across(salmon_chinook_hatch_kept:total_caught_pp, sum)) %>%  filter(total_kept_pp>4) %>% arrange(desc(total_kept_pp))  %>% filter(id_day %notin% kept_high$id_day) %>% add_column(flag_category = "Kept per day over 4") %>% relocate(flag_category)
 
 # Issue 5 - Released by licence holder per day (across areas & methods, licences not already included in Issue 2)
-licence_day_released<-irec_raw_combined %>% filter(year==2021)  %>% group_by(id_day) %>%  dplyr::summarise(across(salmon_chinook_hatch_kept:total_caught_pp, sum)) %>%  filter(total_released_pp>20) %>% arrange(desc(total_released_pp))  %>% filter(id_day %notin% released_high$id_day)
+licence_day_released<-irec_raw_combined %>% group_by(licence.id, year, month, day, id_day) %>%  dplyr::summarise(across(salmon_chinook_hatch_kept:total_caught_pp, sum)) %>%  filter(total_released_pp>20) %>% arrange(desc(total_released_pp))  %>% filter(id_day %notin% released_high$id_day)%>% add_column(flag_category = "Released per day over 20") %>% relocate(flag_category)
 
 # Issue 6 - Total caught by licence holder per day (across areas & methods, licences not already included in Issue 3)
-licence_day_total<-irec_raw_combined %>% filter(year==2021)  %>% group_by(id_day) %>%  dplyr::summarise(across(salmon_chinook_hatch_kept:total_caught_pp, sum)) %>%  filter(total_caught_pp>20) %>% arrange(desc(total_caught_pp))  %>% filter(id_day %notin% c(total_high$id_day, released_high$id_day, kept_high$id_day))
+licence_day_total<-irec_raw_combined%>% group_by(licence.id, year, month, day, id_day) %>%  dplyr::summarise(across(salmon_chinook_hatch_kept:total_caught_pp, sum)) %>%  filter(total_caught_pp>20) %>% arrange(desc(total_caught_pp))  %>% filter(id_day %notin% c(total_high$id_day, released_high$id_day, kept_high$id_day))%>% add_column(flag_category = "Total caught per day over 20") %>% relocate(flag_category)
 licence_day_total
 
-
-# # Issue 7 - Licences flagged
-# irec_liscences_flag<- irec_raw_combined %>% mutate(kept_high= case_when(total_kept_pp>4 ~ 1, TRUE ~ 0), 
-#                                                    released_high = case_when(total_released_pp>20 ~1, TRUE ~ 0), 
-#                                                    total_high = case_when(total_caught_pp>20 ~ 1, TRUE ~0), 
-#                                                    flag_count = kept_high + released_high + total_high, 
-#                                                    flag_day = case_when(flag_count >0 ~ 1, TRUE ~0)) %>% 
-#                                                    select (licence.id, kept_high, released_high, total_high, flag_count, flag_day) %>% 
-#                                                    group_by(licence.id) %>% 
-#                                                    summarise_if(is.numeric, sum) %>%       
-#                                                    filter(flag_count > 0) %>%       
-#                                                    arrange(desc(flag_count)) 
+#Issue 0 
+full_list_remove<-bind_rows(kept_high, released_high, total_high, licence_day_kept, licence_day_released, licence_day_total) %>% arrange(year, month, day, liscence.id, area)
 
 #Summary table
 explore_summary_irec <- data.frame(Issue_ID=character(), Issue=character(), Count=integer(),
@@ -597,6 +577,7 @@ explore_summary_irec <- data.frame(Issue_ID=character(), Issue=character(), Coun
                               stringsAsFactors=FALSE)
 
 explore_summary_irec <- explore_summary_irec  %>% 
+  add_row(Issue_ID="0", Issue="Full list to remove", Count=nrow(full_list_remove), Definition="Full list of flagged data") %>% 
   add_row(Issue_ID="1", Issue="High # Kept", Count=nrow(kept_high), Definition="Number of total chinook kept per person is over 4") %>% 
   add_row(Issue_ID="1.1", Issue="High # Kept summaries", Count=nrow(kept_high), Definition="Number of total chinook kept per person is over 4, summarized by area, year, guide, lodge, and juveniles") %>% 
   add_row(Issue_ID="2", Issue="High # Total Released", Count=nrow(released_high), Definition="Number of total chinook released (sublegal, legal, and unknown) per person is over 20") %>% 
@@ -609,9 +590,8 @@ explore_summary_irec <- explore_summary_irec  %>%
   add_row(Issue_ID="5", Issue="Licence/day released", Count=nrow(licence_day_released), Definition="Number of released chinook caught per person per day is over 20, regardless of area and method") %>% 
   add_row(Issue_ID="6", Issue="Licence/day total", Count=nrow(licence_day_total), Definition="Number of total chinook caught per person per day is over 20, regardless of area and method") 
   
-   #add_row(Issue_ID="7", Issue="Licences w flags", Count=nrow(irec_liscences_flag), Definition="Licence.id has at least one of: high # kept, high # released or high # caught")
-
 sheet_list_irec<-list(Summary=explore_summary_irec,
+                 "0 - Full list to remove" = full_list_remove,
                  "1 - High_Kept"=kept_high,
                  "1.1 - High_Kept_sum"=kept_investigate,
                  "2 - High_Released"=released_high,
@@ -623,18 +603,8 @@ sheet_list_irec<-list(Summary=explore_summary_irec,
                  "4 - Licence_day kept" = licence_day_kept, 
                  "5 - Licence_day released" = licence_day_released, 
                  "6 - Licence_day total" = licence_day_total
-                # "7 - Licence_flags" = irec_liscences_flag                               
                  )
 
-writexl::write_xlsx(sheet_list_irec, path="irec_QC.xlsx")
+st=format(Sys.time(), "%Y-%m-%d_%H%M")
 
-
-
-
-
-
-
-
-
-
-
+writexl::write_xlsx(sheet_list_irec, path=here::here(paste("irec_qc_output/irec_qc",  "_",  st, ".xlsx", sep = "")))
