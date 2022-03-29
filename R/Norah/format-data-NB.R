@@ -16,7 +16,7 @@ library(stringr)
   
   creelcc <- creel %>%
     rename(AREA = PFMA) %>%
-    filter(YEAR > 2012) %>% 
+    filter(YEAR > 2011) %>% 
     filter(ESTIMATE_SOURCE == "Creel") %>%
     mutate(SURVEY = case_when(
       Include..20. == "Y" ~ "creel20",
@@ -49,9 +49,8 @@ library(stringr)
   #Area 29 (marine) is the same as Area 29 in the CREEL data, Remove in river fisheries
   irec <- irec %>% 
     filter(METHOD == "Angling from boat") %>% 
-    mutate(AREA = case_when(AREA== "Area 29 (Marine)" ~ "Area 29", TRUE ~ AREA))
-  # %>% 
-    # filter(AREA != "Area 29 (In River)", YEAR > 2012) 
+    mutate(AREA = case_when(AREA== "Area 29 (Marine)" ~ "Area 29", TRUE ~ AREA)) %>% 
+    filter(AREA != "Area 29 (In River)", YEAR > 2011) 
   
   # Expand Irec data
   # input 0s for missing observations on irec

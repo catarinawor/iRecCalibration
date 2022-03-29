@@ -31,6 +31,7 @@ fishery_mapping_main <- fishery_mapping_main %>% as_tibble() %>%
                   select(PSCFishery_ID, PSCFishery, CoarseFishery_ID, CoarseFishery, CoarseFishery_Description, FineFishery_ID, FineFishery, FineFishery_Description, Terminal) %>% 
                   arrange(PSCFishery_ID, CoarseFishery_ID, FineFishery_ID)
 
+fishery_mapping_main<-fishery_mapping_main %>% rename(ERAFishery= PSCFishery, ERAFishery_ID = PSCFishery_ID)
 
 ### Up to here has the 3 main fisheries 
 writexl::write_xlsx(fishery_mapping_main, path="fishery_mapping_main.xlsx")
@@ -62,6 +63,10 @@ fishery_mapping<- fishery_mapping %>% as_tibble() %>%
                                             CoarseFishery_Description,FineFishery_Description) %>% 
                                      arrange(DistributionFishery_ID, ModelFishery_ID, PSCFishery_ID, CoarseFishery_ID, FineFishery_ID)
 
+#PSC is the legacy name for ERAFishery
+#Cfilefishery is the legacy name for CoarseFishery
+
+fishery_mapping<-fishery_mapping %>% rename(ERAFishery= PSCFishery, ERAFishery_ID = PSCFishery_ID)
 
 writexl::write_xlsx(fishery_mapping, path="fishery_mapping.xlsx")
 

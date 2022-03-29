@@ -3,6 +3,18 @@
 
 # source(here::here("R/format-data-NB.R"))
 
+# # Issue 7 - Licences flagged
+# irec_liscences_flag<- irec_raw_combined %>% mutate(kept_high= case_when(total_kept_pp>4 ~ 1, TRUE ~ 0), 
+#                                                    released_high = case_when(total_released_pp>20 ~1, TRUE ~ 0), 
+#                                                    total_high = case_when(total_caught_pp>20 ~ 1, TRUE ~0), 
+#                                                    flag_count = kept_high + released_high + total_high, 
+#                                                    flag_day = case_when(flag_count >0 ~ 1, TRUE ~0)) %>% 
+#                                                    select (licence.id, kept_high, released_high, total_high, flag_count, flag_day) %>% 
+#                                                    group_by(licence.id) %>% 
+#                                                    summarise_if(is.numeric, sum) %>%       
+#                                                    filter(flag_count > 0) %>%       
+#                                                    arrange(desc(flag_count)) 
+
 
 # irec to creel -----------------------------------------------------------
 
