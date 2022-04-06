@@ -38,5 +38,25 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
+#Rproject files
+*.Rproj
+
+#Images
+*.tiff
+*.png
+*.jpg
+
+#the responses files
+*responses_sheet1.csv
+*responses_sheet2.csv
+*responses_sheet3.csv
+*bcf.csv
+*.xlsx
+
+#my data folder
+/data/Norah
+
+#Plots folder
+/Plots
 
 
