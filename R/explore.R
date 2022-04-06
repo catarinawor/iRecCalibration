@@ -21,7 +21,7 @@ dat$creel <- round(dat$creel)
 dat$log_irec1 <- log(10 + dat$irec)
 dat$fourth_irec <- dat$irec^.25
 
-ggplot(dat, aes(x = fourth_irec, y = log(creel + 10), color = region)) +
+ggplot(dat, aes(x = fourth_irec, y = log(creel + 10), color = region, shape = disposition)) +
   geom_point(alpha = .5) +
   theme_light() +
   labs(x = "CREEL", y = "iREC") +
