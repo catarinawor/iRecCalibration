@@ -1,0 +1,198 @@
+---
+title: "Preliminary analysis on creel -irec calibration model"
+author: "Catarina Wor, Sean Anderson, Rob Houtman"
+date:  "`r format(Sys.time(), '%B %Y')`"
+output: bookdown::html_document2
+---
+
+ 
+
+```{r load, include=FALSE}
+
+library(ggplot2)
+library(dplyr)
+library(glmmTMB)
+library(DHARMa)
+library(grid)
+library(brms)
+#rmarkdown::render("irec_creel.Rmd")
+
+
+
+source(here::here("R/format-data.R"))
+dat <- format_data()
+
+
+head(dat)
+unique(dat$area)
+
+```
+
+# Rationale
+
+Develop a calibration model to combine both creel and irec survey methods to a single recreational catch estimate, taking into account month and area. This is an update to the current calibration method that produces coastwide and year-long estimates.  
+
+
+
+# Data groupings decisions
+
+Based on previus explorations of data distributions  the following decisions were made:
+
+- Exclude year 2012, because it is the first year in which iRec became operational and the data distribution for that year looks visibly different from that for other years. 
+- Group areas by logistical area following the lu_grouping3 provided by Kris Hein, which group all the PFMAs into `sum(!is.na(unique(arealu$LU_GROUPING3)))` areas. 
+- Inspection of the creel quality control did not seem to show a lot of difference in the distribution of the data. For now we will opt to include all creel data.
+- iRec data is inputed: any missing observations are inputed with 0's. If no survey respondant said they caught a chinook, then our estimate is 0. 
+- Months were aggregates into offseason (October-April) and peakseanon (May-September).
+
+
+
+
+# Current calibration model
+
+The current calibration model is of the form: 
+
+
+\begin{align}
+&iREC_i =  \beta_1\cdot z_i + \epsilon_i\\
+&z_i = Creel_i   + \nu_{i} 
+\end{align}
+
+
+
+We believe that, for the purposes of the calibration model , it would be better to flip the explanatory and response variables. This way the model would produce calibrated creel estimates, not calibrated irec estimates. 
+Therefore we consider the following base model: 
+
+\begin{align}
+&Creel_i =  \beta_1\cdot z_i + \epsilon_i\\
+&z_i = iREC_i   + \nu_{i} 
+\end{align}
+
+\begin{align}
+&\epsilon_i \sim N(0,\sigma_{\epsilon})\\
+&\nu_{i} \sim N(0,\sigma_{\nu})
+\end{align}
+
+ where:
+
+$iREC_i$ =  iREC observation 
+
+$Creel_i$ =  creel observation 
+
+$\beta_1$ =  slope associated with $iREC_i$ 
+
+$z_i$ = smoothed ('true') $iREC_i$ 
+
+$\epsilon_i$ and $\nu_{i}$ are normally distributed error 
+
+
+
+
+```{r basemodel, include=FALSE}
+
+#I need to check if this model is correct.
+#But the feed seems to be pretty bad.
+dat$dum<-seq_len(nrow(dat))
+m <- glmmTMB(creel ~ 0+ (0+irec|dum),
+  data = dat, family = gaussian)
+summary(m)
+bm <- DHARMa::simulateResiduals(m, n = 300)
+plot(bm)
+
+
+
+```
+
+
+```{r plotbm, echo=FALSE, fig.height = 8, fig.width = 14, fig.cap = "DHARMa Residual plots for the base calibration model "}
+
+plot(bm)
+
+```
+
+
+# Alternative calibration model
+
+The objective of this alternative model is to include the effect of area and month in the calibration model to account for spatial and temporal variation in the relationship between creel and irec. 
+
+After some exploration of candidate models (not shown here). We found that the creel data is best described if it is split into two steps: when the creel data is zero and otherwise. This selection was based on preliminary model fits using glmmTMB and the diagnostics available from the DHARMa R package for mixed effects models. 
+
+We found that including a non-zero intercept in the model led to an improved model fit. 
+
+We opted for using a polynomial smoothing function over the variable month instead of the season covariate as it led to lower AIC values and better model fits. 
+
+
+Below we present the two models with the lme4 syntax. Later versions will include the full model equations
+
+Model when irec is positive
+`creel ~ 1 + log_irec + poly(month, 2) + (1 + log_irec | region)`
+
+Model when irec is zero
+`creel ~ poly(month, 2) + (1 | region)`
+
+
+
+```{r alternativepos, include=FALSE}
+
+dat_pos <- filter(dat, irec > 0)
+
+
+ggplot(dat_pos, aes(x = irec, y = creel, color = region)) +
+  geom_point(alpha = .5) +
+  scale_x_log10() + scale_y_log10() +
+  geom_smooth(formula = y ~ 1 + x, method = "lm", se = FALSE)
+
+dat_pos$log_irec <- log(dat_pos$irec)
+
+m1.1 <- glmmTMB(creel ~ 1 + log_irec + poly(month, 2) + (1 + log_irec | region), data = dat_pos, family = nbinom1(), dispformula = ~log_irec)
+
+summary(m1.1)
+
+r <- DHARMa::simulateResiduals(m1.1, n = 100)
+
+
+
+```
+
+
+```{r residpos, echo=FALSE, fig.height = 8, fig.width = 14, fig.cap = "DHARMa Residual plots for the updated calibration model when creel is positive"}
+
+plot(r)
+
+```
+
+```{r alternativezero, include=FALSE}
+dat_zero <- filter(dat, irec == 0)
+ggplot(dat_zero, aes(x = month, y = log(creel+1), color = region)) +
+  geom_jitter(alpha = .5, height = 0, width = 0.1) +
+  geom_smooth(se = FALSE,method = lm, formula = y ~ splines::bs(x, 2))
+
+fit2.1 <- glmmTMB(
+  creel ~ poly(month, 2) + (1 | region), 
+  data = dat_zero,
+  family = nbinom1()
+)
+summary(fit2.1)
+
+rzero <- DHARMa::simulateResiduals(fit2.1, n = 300)
+
+
+
+
+
+```
+
+
+
+```{r residzero, echo=FALSE, fig.height = 8, fig.width = 14, fig.cap = "DHARMa Residual plots for the updated calibration model when irec is zero - model does not include irec as explanatory variable "}
+
+plot(rzero)
+
+```
+
+
+
+## Questions for discussion:
+
+- The alternative model performs better than others we explored, but diagnostics indicate that there is room for improvement.
+- The use of an adjacency matrix to explain the effect of region (or the finer scale area), would likely lead to improved model fits.   
+

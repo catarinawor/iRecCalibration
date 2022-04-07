@@ -4,7 +4,7 @@ format_data <- function() {
   creel <- read.csv(here::here("data/creel_filter.csv"))
   irec <- read.csv(here::here("data/iRecchinook_2012_2021.csv"))
   arealu <- read.csv(here::here("data/areaLU.csv"))
-  
+
   creel <- creel %>%
     rename(AREA = PFMA) %>%
     left_join(arealu[, c("AREA", "LU_GROUPING3")]) %>%
@@ -54,6 +54,9 @@ format_data <- function() {
   ireccc <- irecc %>%
     rename(IREC = ESTIMATE, SDIREC = SD) %>%
     select(c(!SURVEY))
+
+
+  head(ireccc)
   
   datxy <- left_join(ireccc, creelcc) %>%
     mutate(SEASON = if_else(MONTH < 5 | MONTH > 9, "offseason", "peakseason"))

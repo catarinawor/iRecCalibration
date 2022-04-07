@@ -40,6 +40,7 @@ summary(m)
 
 dat$positive_creel <- as.integer(dat$creel > 0)
 
+#the
 m <- glmmTMB(positive_creel ~ 1 + log_irec1 + (1 + log_irec1 | region),
   data = dat, family = binomial())
 summary(m)
@@ -189,7 +190,8 @@ m <- glmmTMB(sqrt(creel_orig) ~ 1 + sqrt_irec * poly(month, 2) + (1 + sqrt_irec 
 r <- DHARMa::simulateResiduals(m, n = 100)
 plot(r)
 
-
+#====================
+#comeca aqui
 dat_pos <- filter(dat, irec > 0)
 plot(log(dat_pos$irec), log(dat_pos$creel+1))
 
@@ -206,7 +208,9 @@ m2 <- glmmTMB(creel ~ 1 + log_irec * poly(month, 2) + (1 + log_irec | region), d
 AIC(m1, m2)
 
 m1.1 <- glmmTMB(creel ~ 1 + log_irec + poly(month, 2) + (1 + log_irec | region), data = dat_pos, family = nbinom1(), dispformula = ~log_irec)
-AIC(m1, m1.1)
+m1.3 <- glmmTMB(creel ~ 1 + log_irec + season + (1 + log_irec | region), data = dat_pos, family = nbinom1(), dispformula = ~log_irec)
+
+AIC(m1, m1.1, m1.3)
 summary(m1.1)
 
 r <- DHARMa::simulateResiduals(m1.1, n = 100)
@@ -233,7 +237,7 @@ summary(m1.4)
 
 AIC(m1.2, m1.3, m1.4)
 
-r <- DHARMa::simulateResiduals(m1.4, n = 100)
+r <- DHARMa::simulateResiduals(m1.2, n = 100)
 plot(r)
 
 library(brms)
