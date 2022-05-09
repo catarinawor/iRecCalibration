@@ -50,7 +50,9 @@ library(stringr)
   irec <- irec %>% 
     filter(METHOD == "Angling from boat") %>% 
     mutate(AREA = case_when(AREA== "Area 29 (Marine)" ~ "Area 29", TRUE ~ AREA)) %>% 
-    filter(AREA != "Area 29 (In River)", YEAR > 2011) 
+    filter(AREA != "Area 29 (In River)", YEAR > 2011)
+  
+  
   
   # Expand Irec data
   # input 0s for missing observations on irec
