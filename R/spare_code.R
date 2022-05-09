@@ -1,6 +1,36 @@
 
 
 
+### chelsea
+dat_chel<- datxy_pseudo %>% filter(erafishery %in% c("NBC AABM S", "NBC ISBM S", "CBC S")) 
+
+
+p <- ggplot(dat_chel,aes(x=year, y=irec))
+p <- p + geom_point(size=2, alpha=.5, aes(color=erafishery, shape=disposition)) +  facet_wrap(~disposition, scales="free")
+p <- p + geom_smooth(method = lm, formula= y~x,  size = 1, alpha  = .5, col="black") # to add regression line
+p <- p + theme_bw(16)+labs( x="year", y="irec")
+p <- p + scale_color_viridis_d(end = 0.8,option = "B")+ scale_fill_viridis_d(end = 0.8,option = "B")
+p <- p + theme(legend.position="bottom")
+p
+
+
+p <- ggplot(dat_chel,aes(x=creel, y=irec))
+p <- p + geom_point(size=2, alpha=.5, aes(color=erafishery, shape=disposition)) +  facet_wrap(~disposition, scales="free")
+p <- p + geom_smooth(method = lm, formula= y~x,  size = 1, alpha  = .5, col="black") # to add regression line
+p <- p + theme_bw(16)+labs( x="year", y="irec")
+p <- p + scale_color_viridis_d(end = 0.8,option = "B")+ scale_fill_viridis_d(end = 0.8,option = "B")
+p <- p + theme(legend.position="bottom")+ geom_abline(intercept = 0, slope = 1, linetype="dashed", size=1)
+p
+
+#####
+
+
+
+
+
+
+
+
 # source(here::here("R/format-data-NB.R"))
 
 # # Issue 7 - Licences flagged
