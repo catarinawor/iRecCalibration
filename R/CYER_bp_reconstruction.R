@@ -54,7 +54,8 @@ names(bcf) <- tolower(names(bcf))
 bcf_short<-bcf %>% select(licence.year, disposition, bcf) %>% filter(licence.year>2011)
 
 ### Load in the creel and irec data:
-creel <- read.csv(here::here("data/creel_filter.csv"))
+#creel1 <- read.csv(here::here("data/creel_filter.csv"))
+creel <- read.csv(here::here("data/creel_filter_2008_2021.csv"))
 irec <- read.csv(here::here("data/iRecchinook_2012_2021.csv"))
 arealu <- read.csv(here::here("data/areaLU.csv"))
 
@@ -211,8 +212,6 @@ irec_creel_merged2<- irec_creel_merged2 %>% mutate(licence.year= case_when(
 
 irec_creel_merged2<-merge(irec_creel_merged2, bcf_short, all=TRUE)%>% as_tibble()
 
-View(irec_creel_merged2)
-
 irec_creel_merged_pseudo2<- irec_creel_merged2 %>%  mutate(pseudocreel_2 = case_when(month %in% c(5:9) & is.na(creel_sum2) ~ as.numeric(irec_sum2/bcf),
                                                                                      month %in% c(1:4,10:12) ~ as.numeric(irec_sum2/bcf),
                                                                                      TRUE ~ as.numeric(creel_sum2)), 
@@ -237,7 +236,7 @@ irec_creel_merged_pseudo_sum_erafishery2<- irec_creel_merged_pseudo2 %>% group_b
  
 #Compare to CNR data downloaded from CAMP May 9, 2022
 #see camp downloads
-#cnr<-read_excel(here::here("data/REAMCNRData.xlsx"))
+cnr<-read_excel(here::here("data/REAMCNRData.xlsx"))
 # cnr is one row per year so need to compare with era
 cnr_canada_sport
 
@@ -272,8 +271,6 @@ irec_creel_cnr<- irec_creel_cnr %>% filter(erafishery %in% c("NBC AABM S", "NBC 
 #note: when there is no creel data, the two methods of calculating pseudocreel are the same, since it's just addition of irec. 
 
 
-
-View(irec_creel_cnr)
 theme_set(theme_bw())
 pkept <- ggplot(irec_creel_cnr %>% filter(disposition=="Kept") ,aes(x=as.factor(year), y=values, color=source, group=source))
 pkept <- pkept + geom_point(size=3, alpha=.5) +  geom_pointrange(aes(ymin=values-sd, ymax = values+sd))+ facet_wrap(~disposition + erafishery, scales="free") + geom_line()+theme(legend.position = "bottom")
