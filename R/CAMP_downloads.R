@@ -1,8 +1,10 @@
 # load libraries ----------------------------------------------------------
 
+options("install.lock"=FALSE)
+
+library(ggplot2)
 library(odbc)
-library(dplyr)
-# remotes::install_git("https://github.com/Pacific-salmon-assess/tagFisheryMapping")
+ #remotes::install_git("https://github.com/Pacific-salmon-assess/tagFisheryMapping")
 library(tagFisheryMapping)
 library(dbplyr)
 library(janitor)
@@ -83,25 +85,41 @@ cnr_canada_sport
 
 
 
-
+cwdbrecovery<-tbl(campdb, "CWDBRecovery")
 
 
 #some tidying functions to make the explorations work
 "%notin%" <- Negate("%in%")
 cwdbrecovery<- cwdbrecovery %>% as_tibble()
-cwdbrecovery_unq<-cwdbrecovery %>% select(TagCode) %>% distinct()
 
-wiretagcode_unq <-
-  tbl(campdb, "WireTagCode") %>%
-  as_tibble() %>%
-  filter(Included == TRUE) %>%
-  distinct(TagCode)
+wiretagcode<-tbl(campdb, "WireTagCode") %>% as_tibble()
+wiretagcode
 
+cwdb_wiretag<-merge(cwdbrecovery, wiretagcode)%>% as_tibble()
+cwdb_wiretag<- cwdb_wiretag %>% relocate(Stock, RunYear, BroodYear, Age, Fishery, TagCode, AdjustedEstimatedNumber)
+cwdb_wiretag<- cwdb_wiretag %>% rename(FineFishery_ID=Fishery)
+
+
+fishmap<-read.csv("fishery_mapping_main.csv")
+
+cwdb_wiretag<-merge(cwdb_wiretag, fishmap) %>% as_tibble() %>% relocate(ERAFishery, Stock, RunYear, BroodYear, Age,  TagCode, AdjustedEstimatedNumber)
+cwdb_wiretag
+
+cwdb_wiretag_sum<-cwdb_wiretag %>% group_by(ERAFishery, RunYear, Age) %>% summarise(CWT = sum(AdjustedEstimatedNumber))
+cwdb_wiretag_sum_can<- cwdb_wiretag_sum %>% filter(ERAFishery %in% c("NBC AABM S", "NBC ISBM S", "CBC S", "WCVI AABM S", "WCVI ISBM S")) 
+ggplot(cwdb_wiretag_sum_can,aes(x=RunYear, y=CWT, color=as.factor(Age), group=as.factor(Age))) + geom_point(size=3, alpha=.5) + facet_wrap(~ERAFishery, scales="free") + geom_line()+theme(legend.position = "bottom")
+
+cwdb_wiretag_stock_sum<-cwdb_wiretag %>% group_by(Stock, RunYear, Age) %>% summarise(CWT = sum(AdjustedEstimatedNumber))
+cwdb_wiretag_stock_sum_can<- cwdb_wiretag_stock_sum %>% filter(Stock %in% c("ATN", "KLM", "RBT", "QUI", "PHI", "COW", "NIC", "SHU", "HAR")) 
+
+
+ggplot2(cwdb_wiretag_stock_sum_can,aes(x=RunYear, y=CWT, color=as.factor(Age), group=as.factor(Age))) + geom_point(size=3, alpha=.5) + facet_wrap(~Stock, scales="free") + geom_line()+theme(legend.position = "bottom")
 
 # Open connection to MRP  -------------------------------------------------
 #this takes a while if you load everything, you can select only current year
 mrp_recoveries<-getDfoTagRecoveries(1950:2022)
 
-#filter MRP database by indicator tags only
-mrp_recoveries_ind<-mrp_recoveries %>% filter(tag_code %in% wiretagcode_unq$TagCode)
+#query to be implemented: 
+mrp_rec_recoveries<- getDfoRecRecoveries(2009:2022)
+
 
