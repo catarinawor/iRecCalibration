@@ -15,6 +15,7 @@ library(glmmTMB)
 library(DHARMa)
 library(grid)
 library(brms)
+library(mice)
 #rmarkdown::render("irec_creel.Rmd")
 
 
@@ -23,8 +24,6 @@ source(here::here("R/format-data.R"))
 dat <- format_data()
 
 
-head(dat)
-unique(dat$area)
 
 ```
 
@@ -96,8 +95,6 @@ m <- glmmTMB(creel ~ 0+ (0+irec|dum),
   data = dat, family = gaussian)
 summary(m)
 bm <- DHARMa::simulateResiduals(m, n = 300)
-plot(bm)
-
 
 
 ```
@@ -134,21 +131,21 @@ Model when irec is zero
 ```{r alternativepos, include=FALSE}
 
 dat_pos <- filter(dat, irec > 0)
-
+dat_pos$log_irec <- log(dat_pos$irec)
 
 ggplot(dat_pos, aes(x = irec, y = creel, color = region)) +
   geom_point(alpha = .5) +
   scale_x_log10() + scale_y_log10() +
   geom_smooth(formula = y ~ 1 + x, method = "lm", se = FALSE)
 
-dat_pos$log_irec <- log(dat_pos$irec)
+log_irec
 
 m1.1 <- glmmTMB(creel ~ 1 + log_irec + poly(month, 2) + (1 + log_irec | region), data = dat_pos, family = nbinom1(), dispformula = ~log_irec)
+
 
 summary(m1.1)
 
 r <- DHARMa::simulateResiduals(m1.1, n = 100)
-
 
 
 ```
@@ -190,6 +187,44 @@ plot(rzero)
 ```
 
 
+## Bayesian version
+
+
+```{r alternativepos, include=FALSE}
+dat_pos$log_irec_cent <- dat_pos$log_irec - mean(dat_pos$log_irec)
+fit1 <- brm(
+  bf(
+    creel ~ log_irec_cent + s(month, k = 3) + 
+      (log_irec_cent | region), 
+    shape ~ log_irec_cent), 
+  data = dat_pos, 
+  family = negbinomial(),
+  iter = 1000, chains = 2, cores = 2
+)
+
+fit1
+
+
+
+nd1 <- expand.grid(
+  month = unique(dat_pos$month), 
+  region = unique(dat_pos$region),
+  log_irec_cent = seq(min(dat_pos$log_irec_cent), max(dat_pos$log_irec_cent), length.out = 100)
+)
+nd1$log_irec <- nd1$log_irec_cent + mean(dat_pos$log_irec)
+nd1$irec <- exp(nd1$log_irec)
+
+
+
+x1 <- tidybayes::add_predicted_draws(nd1, fit1, ndraws = 100)
+x1 %>% 
+  filter(month == unique(dat_pos$month)[1]) %>% 
+  ggplot(aes(irec, .prediction, group = paste(region, .draw), colour = region)) +
+  geom_line(alpha = 0.2) +
+  facet_wrap(~region, scales = "free_y")
+
+
+``
 
 ## Questions for discussion:
 
