@@ -1,3 +1,9 @@
+#===================================================
+#Explore model fits for irec-creel calibration
+#Sean Anderson and Catarina wor
+#==================================================
+
+
 library(dplyr)
 library(ggplot2)
 library(glmmTMB)
