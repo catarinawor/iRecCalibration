@@ -1,4 +1,78 @@
 
+#A few different ways to summarise the data:
+
+irec_creel_merged_pseudo_sum1<- irec_creel_merged_pseudo %>% group_by(area, year, disposition) %>% summarise(creel_sum1=ifelse(all(is.na(creel)), NA, sum(creel, na.rm=TRUE)),
+                                                                                                             pseudocreel_sum1=sum(pseudocreel))
+p <- ggplot(irec_creel_merged_pseudo_sum1 ,aes(x=creel_sum1, y=pseudocreel_sum1))
+p <- p + geom_point(size=2, alpha=.5, aes(color=as.factor(year), shape=disposition)) +  facet_wrap(~disposition, scales="free")
+p <- p + geom_smooth(method = lm, formula= y~x,  size = 1, alpha  = .5, col="black") # to add regression line
+p <- p + theme_bw(16)+labs( x="creel only", y="creel updated with irec - pseudocreel")
+p <- p + scale_color_viridis_d(end = 0.8,option = "B")+ scale_fill_viridis_d(end = 0.8,option = "B")
+p <- p + theme(legend.position="bottom")+ geom_abline(intercept = 0, slope = 1, linetype="dashed", size=1)
+p
+
+irec_creel_merged_pseudo_sum2<- irec_creel_merged_pseudo %>% group_by(erafishery, year, disposition) %>% summarise(creel_sum1=ifelse(all(is.na(creel)), NA, sum(creel, na.rm=TRUE)),
+                                                                                                                   pseudocreel_sum1=sum(pseudocreel))
+
+
+p2 <- ggplot(irec_creel_merged_pseudo_sum2 ,aes(x=creel_sum1, y=pseudocreel_sum1, color=erafishery, fill=erafishery, shape=disposition))
+p2 <- p2 + geom_point(size=2, alpha=.5) +  facet_wrap(~disposition, scales="free")
+p2 <- p2 + geom_smooth(method = lm, formula= y~x,  size = 1, alpha  = .5) # to add regression line
+p2 <- p2 + theme_bw(16)+labs( x="creel only", y="creel updated with irec pseudocreel")
+p2 <- p2 + scale_color_viridis_d(end = 0.8,option = "B")+ scale_fill_viridis_d(end = 0.8,option = "B")
+p2 <- p2 + theme(legend.position="bottom")+ geom_abline(intercept = 0, slope = 1, linetype="dashed", size=1)
+p2
+
+irec_creel_merged_pseudo_sum3<- irec_creel_merged_pseudo %>% filter(erafishery %in% c("WCVI AABM S", "WCVI ISBM S")) %>% 
+  group_by(erafishery, year, disposition) %>% summarise(creel_sum1=ifelse(all(is.na(creel)), NA, sum(creel, na.rm=TRUE)),
+                                                        pseudocreel_sum1=sum(pseudocreel))
+
+p3 <- ggplot(irec_creel_merged_pseudo_sum3 ,aes(x=creel_sum1, y=pseudocreel_sum1))
+p3 <- p3 + geom_point(size=2, alpha=.5, aes(color=as.factor(year), shape=erafishery)) +  facet_wrap(~disposition, scales="free")
+p3 <- p3 + geom_smooth(method = lm, formula= y~x,  size = 1, alpha  = .5, col="black") # to add regression line
+p3 <- p3 + theme_bw(16)+labs( x="creel only", y="creel updated with irec pseudocreel")
+p3 <- p3 + scale_color_viridis_d(end = 0.8,option = "B")+ scale_fill_viridis_d(end = 0.8,option = "B")
+p3 <- p3 + theme(legend.position="bottom")+ geom_abline(intercept = 0, slope = 1, linetype="dashed", size=1)
+p3
+
+p3 <- ggplot(irec_creel_merged_pseudo_sum3 ,aes(x=creel_sum1, y=pseudocreel_sum1, color=erafishery, fill=erafishery))
+p3 <- p3 + geom_point(size=2, alpha=.5) +  facet_wrap(~disposition+erafishery, scales="free")
+p3 <- p3 + geom_smooth(method = lm, formula= y~x,  size = 1, alpha  = .5) # to add regression line
+p3 <- p3 + theme_bw(16)+labs( x="creel only", y="creel updated with irec pseudocreel")
+p3 <- p3 + scale_color_viridis_d(end = 0.8,option = "B")+ scale_fill_viridis_d(end = 0.8,option = "B")
+p3 <- p3 + theme(legend.position="bottom")+ geom_abline(intercept = 0, slope = 1, linetype="dashed", size=1)
+p3
+
+
+
+### chelsea
+dat_chel<- datxy_pseudo %>% filter(erafishery %in% c("NBC AABM S", "NBC ISBM S", "CBC S")) 
+
+
+p <- ggplot(dat_chel,aes(x=year, y=irec))
+p <- p + geom_point(size=2, alpha=.5, aes(color=erafishery, shape=disposition)) +  facet_wrap(~disposition, scales="free")
+p <- p + geom_smooth(method = lm, formula= y~x,  size = 1, alpha  = .5, col="black") # to add regression line
+p <- p + theme_bw(16)+labs( x="year", y="irec")
+p <- p + scale_color_viridis_d(end = 0.8,option = "B")+ scale_fill_viridis_d(end = 0.8,option = "B")
+p <- p + theme(legend.position="bottom")
+p
+
+
+p <- ggplot(dat_chel,aes(x=creel, y=irec))
+p <- p + geom_point(size=2, alpha=.5, aes(color=erafishery, shape=disposition)) +  facet_wrap(~disposition, scales="free")
+p <- p + geom_smooth(method = lm, formula= y~x,  size = 1, alpha  = .5, col="black") # to add regression line
+p <- p + theme_bw(16)+labs( x="year", y="irec")
+p <- p + scale_color_viridis_d(end = 0.8,option = "B")+ scale_fill_viridis_d(end = 0.8,option = "B")
+p <- p + theme(legend.position="bottom")+ geom_abline(intercept = 0, slope = 1, linetype="dashed", size=1)
+p
+
+#####
+
+
+
+
+
+
 
 
 # source(here::here("R/format-data-NB.R"))

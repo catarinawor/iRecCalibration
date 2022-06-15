@@ -59,4 +59,9 @@ vignettes/*.pdf
 #Plots folder
 /Plots
 
+#camp config
+*camp.config
+
+#csv files
+*.csv
 
