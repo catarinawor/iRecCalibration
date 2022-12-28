@@ -95,7 +95,7 @@ m <- glmmTMB(creel ~ 0+ (0+irec|dum),
   data = dat, family = gaussian)
 summary(m)
 bm <- DHARMa::simulateResiduals(m, n = 300)
-
+plot(bm)
 
 ```
 

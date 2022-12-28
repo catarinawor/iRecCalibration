@@ -1,5 +1,6 @@
 library(dplyr)
 
+
 format_data <- function() {
   creel <- read.csv(here::here("data/creel_filter.csv"))
   irec <- read.csv(here::here("data/iRecchinook_2012_2021.csv"))

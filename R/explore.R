@@ -9,8 +9,21 @@ library(ggplot2)
 library(glmmTMB)
 library(DHARMa)
 
-source(here::here("R/format-data.R"))
+source("format-data.R")
 dat <- format_data()
+
+dev.new()
+ggplot(dat, aes(x = fourth_irec, y = log(creel + 10), color = region, shape = disposition)) +
+  geom_point(alpha = .5) +
+  theme_light() +
+  labs(x = "CREEL", y = "iREC") +
+  scale_color_viridis_d(end = 0.8, option = "C") +
+  # geom_smooth(formula = y ~ poly(x, 2), method = "lm", se = FALSE)
+  geom_smooth(formula = y ~ 1 + x, method = "lm", se = FALSE)
+# geom_smooth(formula = y ~ x, method = "lm", se = FALSE)
+
+
+
 
 p <- ggplot(dat) +
   geom_point(aes(x = creel, y = irec, color = disposition, shape = disposition), size = 2, alpha = .5) +
@@ -22,6 +35,7 @@ p <- ggplot(dat) +
   theme(legend.position = "bottom")
 p
 
+#transformations to investigate
 dat$creel_orig <- dat$creel
 dat$creel <- round(dat$creel)
 dat$log_irec1 <- log(10 + dat$irec)
@@ -36,9 +50,37 @@ ggplot(dat, aes(x = fourth_irec, y = log(creel + 10), color = region, shape = di
   geom_smooth(formula = y ~ 1 + x, method = "lm", se = FALSE)
   # geom_smooth(formula = y ~ x, method = "lm", se = FALSE)
 
-m <- glmmTMB(creel ~ 0 + log_irec1 + (0 + log_irec1 | region),
-  data = dat, family = nbinom2())
+
+summary(dat)
+
+
+#base case model
+
+
+dat$dum<-seq_len(nrow(dat))
+m <- glmmTMB(creel ~ 0+ (0+irec|dum),
+             data = dat)
 summary(m)
+bm <- DHARMa::simulateResiduals(m, n = 300)
+plotResiduals(bm, form = dat$irec)
+plot(bm)
+
+
+
+m <- glmmTMB(creel ~ 0 + irec + (0 + irec | region),
+  data = dat, family =gaussian ())
+bm <- DHARMa::simulateResiduals(m, n = 300)
+plotResiduals(bm, form = dat$irec)
+plot(bm)
+summary(m)
+
+r_m <- DHARMa::simulateResiduals(m, n = 300)
+plotResiduals(r_m, form = dat$irec)
+plot(r_m)
+
+
+
+
 
 m <- glmmTMB(creel ~ 1 + log_irec1 + (1 + log_irec1 | region),
   data = dat, family = nbinom2())
@@ -171,13 +213,15 @@ plot(log(dat_pos$irec), log(dat_pos$creel))
 plot((dat_pos$irec), log(dat_pos$creel))
 
 
-m <- glmmTMB(log(creel_orig) ~ 1 + log(irec) + poly(month, 3) + (1 + log(irec) | region),
+m <- glmmTMB(log(creel_orig) ~ 1 + log(irec) + poly(month, 3) + (1 | region),
   data = dat_pos, dispformula = ~ log(irec) + region)
 
 summary(m)
 
-r <- DHARMa::simulateResiduals(m, n = 100)
+r <- DHARMa::simulateResiduals(m, n = 2000)
 plot(r)
+residuals(r)
+testDispersion(r)
 
 plot(log(dat_pos$irec), log(dat_pos$creel))
 
@@ -201,10 +245,26 @@ plot(r)
 dat_pos <- filter(dat, irec > 0)
 plot(log(dat_pos$irec), log(dat_pos$creel+1))
 
+summary(dat_pos)
+
 ggplot(dat_pos, aes(x = irec, y = creel, color = region)) +
   geom_point(alpha = .5) +
   scale_x_log10() + scale_y_log10() +
   geom_smooth(formula = y ~ 1 + x, method = "lm", se = FALSE)
+
+
+m1 <- glmmTMB(log(creel+1) ~ 1 + log(irec) + (1 + log(irec) | region), data = dat_pos, family=tweedie())
+bm <- DHARMa::simulateResiduals(m1, n = 300)
+plotResiduals(bm)
+
+
+
+plot(bm)
+summary(m)
+
+
+
+
 
 dat_pos$log_irec <- log(dat_pos$irec)
 m1 <- glmmTMB(creel ~ 1 + log_irec * poly(month, 2) + (1 + log_irec | region), data = dat_pos, family = nbinom1())
@@ -241,10 +301,27 @@ m1.3 <- glmmTMB(creel ~ 1 + log_irec + poly(month, 2) + (1 + log_irec | region),
 m1.4 <- glmmTMB(creel ~ 1 + log_irec + poly(month, 2) + (1 + log_irec | region), data = dat_pos, family = genpois(), dispformula = ~log_irec)
 summary(m1.4)
 
+
+
 AIC(m1.2, m1.3, m1.4)
 
-r <- DHARMa::simulateResiduals(m1.2, n = 100)
+
+
+r <- DHARMa::simulateResiduals(m1.2, n = 1000)
+testDispersion(r)
+testZeroInflation(r)
 plot(r)
+
+
+
+m1.2a <- glmmTMB(creel ~ 1 + log_irec + poly(month, 2) + (1 + log_irec | region), data = dat_pos, family =tweedie(), dispformula = ~log_irec)
+
+
+ra <- DHARMa::simulateResiduals(m1.2a, n = 1000)
+testDispersion(ra)
+testZeroInflation(ra)
+testQuantiles(ra)
+plot(ra)
 
 library(brms)
 
