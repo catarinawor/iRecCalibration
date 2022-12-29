@@ -43,7 +43,6 @@ vignettes/*.pdf
 
 #Images
 *.tiff
-*.png
 *.jpg
 
 #the responses files
