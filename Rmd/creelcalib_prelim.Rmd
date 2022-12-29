@@ -51,12 +51,6 @@ Based on previus explorations of data distributions  the following decisions wer
 The current calibration model is of the form: 
 
 
-\begin{align}
-&iREC_i =  \beta_1\cdot z_i + \epsilon_i\\
-&z_i = Creel_i   + \nu_{i} 
-\end{align}
-
-
 
 We believe that, for the purposes of the calibration model , it would be better to flip the explanatory and response variables. This way the model would produce calibrated creel estimates, not calibrated irec estimates. 
 Therefore we consider the following base model: 
