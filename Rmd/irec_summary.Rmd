@@ -52,7 +52,7 @@ $$
 
 This model is run individually for each year, and disposition (kept/released). In the initial runs of this project, I thought of grouping all the years as replicates, however that would mean that the catch estimates for year Y would change every time the calibration is re-run, which is not ideal and may cause a lot of confusion. 
 
-So I am reproducing the analysis (kind of), by year. Using year 2019 as an example here
+So I am reproducing the analysis (kind of), by year. Using year 2019 as an example here.
 
 
 
@@ -99,5 +99,50 @@ r <- DHARMa::simulateResiduals(m1.2, n = 1000)
 plot(r)
 
 ```
+
+## brms
+
+I am trying to reproduce the model from glmmTMB in brms but unsure if this one makes sense. 
+
+
+```{r brms, include=TRUE}
+
+#compare models with and without the cv 
+dat_pos$log_irec_cent <- dat_pos$log_irec - mean(dat_pos$log_irec)
+dat_pos$irec_cv <- dat_pos$sdirec/ dat_pos$irec
+
+fit1 <- brm(
+  bf(
+    creel ~   me(log_irec_cent,irec_cv) +
+      (me(log_irec_cent,irec_cv) | region), 
+    shape ~ log_irec_cent), 
+  data = dat_pos, 
+  family = negbinomial(),
+  iter = 600, chains = 2, cores = 2
+)
+
+fit1
+
+nd1 <- expand.grid(   
+  region = unique(dat_pos$region),
+  log_irec_cent = seq(min(dat_pos$log_irec_cent), max(dat_pos$log_irec_cent), length.out = 100),
+  irec_cv = mean(dat_pos$irec_cv))
+  #seq(min(dat_pos$irec_cv), max(dat_pos$irec_cv), length.out = 100))
+ 
+
+nd1$log_irec <- nd1$log_irec_cent + mean(dat_pos$log_irec)
+nd1$irec <- exp(nd1$log_irec)
+
+x1 <- tidybayes::add_linpred_draws(nd1, fit1, ndraws = 100, transform = TRUE)
+  
+  ggplot(data=x1) +
+  geom_line(aes(irec, .linpred, group = paste(region, .draw), colour = region),alpha = 0.2) +
+  geom_point(data=dat_pos,aes(x=irec,y=creel))+
+  facet_wrap(~region) +
+  scale_x_log10() +
+  scale_y_log10()
+
+```
+
 
 
