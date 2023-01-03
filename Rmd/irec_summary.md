@@ -1,7 +1,7 @@
 Irec and creel data exploration
 ================
 Catarina Wor
-December 2022
+January 2023
 
 # Steps
 
@@ -19,7 +19,7 @@ $$
 $$
 \epsilon_i \sim N(0,\sigma_{\epsilon})
 $$ $$
-&\nu_{i} \sim N(0,\sigma_{\nu})
+\nu_{i} \sim N(0,\sigma_{\nu})
 $$
 
 This model is run individually for each year, and disposition
@@ -29,7 +29,7 @@ catch estimates for year Y would change every time the calibration is
 re-run, which is not ideal and may cause a lot of confusion.
 
 So I am reproducing the analysis (kind of), by year. Using year 2019 as
-an example here
+an example here.
 
 ## Reproduce default model
 
@@ -122,3 +122,109 @@ plot(r)
 ```
 
 ![](irec_summary_files/figure-gfm/model2-1.png)<!-- -->
+
+## brms
+
+I am trying to reproduce the model from glmmTMB in brms but unsure if
+this one makes sense.
+
+``` r
+#compare models with and without the cv 
+dat_pos$log_irec_cent <- dat_pos$log_irec - mean(dat_pos$log_irec)
+dat_pos$irec_cv <- dat_pos$sdirec/ dat_pos$irec
+
+fit1 <- brm(
+  bf(
+    creel ~   me(log_irec_cent,irec_cv) +
+      (me(log_irec_cent,irec_cv) | region), 
+    shape ~ log_irec_cent), 
+  data = dat_pos, 
+  family = negbinomial(),
+  iter = 600, chains = 2, cores = 2
+)
+```
+
+    ## Compiling Stan program...
+
+    ## Start sampling
+
+    ## Warning: There were 30 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+    ## https://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded
+
+    ## Warning: Examine the pairs() plot to diagnose sampling problems
+
+    ## Warning: The largest R-hat is 1.05, indicating chains have not mixed.
+    ## Running the chains for more iterations may help. See
+    ## https://mc-stan.org/misc/warnings.html#r-hat
+
+    ## Warning: Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.
+    ## Running the chains for more iterations may help. See
+    ## https://mc-stan.org/misc/warnings.html#bulk-ess
+
+    ## Warning: Tail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.
+    ## Running the chains for more iterations may help. See
+    ## https://mc-stan.org/misc/warnings.html#tail-ess
+
+``` r
+fit1
+```
+
+    ##  Family: negbinomial 
+    ##   Links: mu = log; shape = log 
+    ## Formula: creel ~ me(log_irec_cent, irec_cv) + (me(log_irec_cent, irec_cv) | region) 
+    ##          shape ~ log_irec_cent
+    ##    Data: dat_pos (Number of observations: 159) 
+    ##   Draws: 2 chains, each with iter = 600; warmup = 300; thin = 1;
+    ##          total post-warmup draws = 600
+    ## 
+    ## Group-Level Effects: 
+    ## ~region (Number of levels: 12) 
+    ##                                       Estimate Est.Error l-95% CI u-95% CI Rhat
+    ## sd(Intercept)                             0.70      0.23     0.35     1.24 1.00
+    ## sd(melog_irec_centirec_cv)                0.29      0.14     0.06     0.60 1.01
+    ## cor(Intercept,melog_irec_centirec_cv)    -0.68      0.27    -0.98     0.08 1.01
+    ##                                       Bulk_ESS Tail_ESS
+    ## sd(Intercept)                              197      329
+    ## sd(melog_irec_centirec_cv)                 116      206
+    ## cor(Intercept,melog_irec_centirec_cv)      262      424
+    ## 
+    ## Population-Level Effects: 
+    ##                        Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS
+    ## Intercept                  6.21      0.23     5.68     6.61 1.00      175
+    ## shape_Intercept            0.16      0.14    -0.10     0.44 1.00      364
+    ## shape_log_irec_cent        0.77      0.10     0.58     0.96 1.01      318
+    ## melog_irec_centirec_cv     1.19      0.12     0.96     1.44 1.01      233
+    ##                        Tail_ESS
+    ## Intercept                   239
+    ## shape_Intercept             444
+    ## shape_log_irec_cent         262
+    ## melog_irec_centirec_cv      230
+    ## 
+    ## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+    ## and Tail_ESS are effective sample size measures, and Rhat is the potential
+    ## scale reduction factor on split chains (at convergence, Rhat = 1).
+
+``` r
+nd1 <- expand.grid(   
+  region = unique(dat_pos$region),
+  log_irec_cent = seq(min(dat_pos$log_irec_cent), max(dat_pos$log_irec_cent), length.out = 100),
+  irec_cv = mean(dat_pos$irec_cv))
+  #seq(min(dat_pos$irec_cv), max(dat_pos$irec_cv), length.out = 100))
+ 
+
+nd1$log_irec <- nd1$log_irec_cent + mean(dat_pos$log_irec)
+nd1$irec <- exp(nd1$log_irec)
+
+x1 <- tidybayes::add_linpred_draws(nd1, fit1, ndraws = 100, transform = TRUE)
+  
+  ggplot(data=x1) +
+  geom_line(aes(irec, .linpred, group = paste(region, .draw), colour = region),alpha = 0.2) +
+  geom_point(data=dat_pos,aes(x=irec,y=creel))+
+  facet_wrap(~region) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+    ## Warning: Transformation introduced infinite values in continuous y-axis
+
+![](irec_summary_files/figure-gfm/brms-1.png)<!-- -->
